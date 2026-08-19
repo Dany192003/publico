@@ -497,7 +497,7 @@ createApp({
         this.cargarDatos();
         this.intervalo = setInterval(() => {
             if (!this.cargando) this.cargarDatos();
-        }, 30000);
+        }, 60000);
     },
     beforeUnmount() {
         if (this.intervalo) clearInterval(this.intervalo);

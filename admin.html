@@ -792,7 +792,7 @@ createApp({
             if (this.autenticado && !this.cargando) {
                 this.cargarDatos();
             }
-        }, 30000);
+        }, 60000);
     },
     beforeUnmount() {
         if (this.intervalo) clearInterval(this.intervalo);
