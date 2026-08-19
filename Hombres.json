@@ -1,0 +1,827 @@
+{
+  "nombre": "Torneo 2026",
+  "contadores": {
+    "juvenil": 13,
+    "equipo": 26,
+    "jugador": 0
+  },
+  "juveniles": [
+    {
+      "id": 1,
+      "nombre": "Confirmacion",
+      "equipos": [
+        {
+          "id": 10,
+          "nombre": "Confirmacion 1"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "nombre": "Ssael",
+      "equipos": [
+        {
+          "id": 11,
+          "nombre": "Ssael 1"
+        },
+        {
+          "id": 12,
+          "nombre": "Ssael 2"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "nombre": "Pentecostes",
+      "equipos": [
+        {
+          "id": 13,
+          "nombre": "Pentecostes 1"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "nombre": "PCV",
+      "equipos": [
+        {
+          "id": 24,
+          "nombre": "PCV 5"
+        },
+        {
+          "id": 25,
+          "nombre": "PCV 4"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "nombre": "Shadai",
+      "equipos": [
+        {
+          "id": 15,
+          "nombre": "Shadai 1"
+        },
+        {
+          "id": 16,
+          "nombre": "Shadai 2"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "nombre": "Roca Fuerte",
+      "equipos": [
+        {
+          "id": 17,
+          "nombre": "Roca Fuerte 1"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "nombre": "Catequistas",
+      "equipos": [
+        {
+          "id": 18,
+          "nombre": "Catequistas 1"
+        },
+        {
+          "id": 19,
+          "nombre": "Catequistas 2"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "nombre": "Jeshua",
+      "equipos": [
+        {
+          "id": 20,
+          "nombre": "Jeshua 1"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "nombre": "Coros",
+      "equipos": [
+        {
+          "id": 21,
+          "nombre": "Coro Mariano"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "nombre": "Lectores",
+      "equipos": [
+        {
+          "id": 9,
+          "nombre": "Lectores 1"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "nombre": "Mujeres y Hombres nuevos",
+      "equipos": [
+        {
+          "id": 22,
+          "nombre": "Mujeres y Hombres nuevos 1"
+        },
+        {
+          "id": 23,
+          "nombre": "Mujeres y Hombres nuevos 2"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "nombre": "Jufra",
+      "equipos": [
+        {
+          "id": 26,
+          "nombre": "Jufra 1"
+        }
+      ]
+    }
+  ],
+  "equipos": [
+    {
+      "id": 9,
+      "nombre": "Lectores 1",
+      "juvenil_id": 11,
+      "jugadores": [],
+      "ganados": 0,
+      "empatados": 0,
+      "perdidos": 0,
+      "goles_favor": 0,
+      "goles_contra": 0,
+      "puntos": 0
+    },
+    {
+      "id": 10,
+      "nombre": "Confirmacion 1",
+      "juvenil_id": 1,
+      "jugadores": [],
+      "ganados": 0,
+      "empatados": 0,
+      "perdidos": 0,
+      "goles_favor": 0,
+      "goles_contra": 0,
+      "puntos": 0
+    },
+    {
+      "id": 11,
+      "nombre": "Ssael 1",
+      "juvenil_id": 2,
+      "jugadores": [],
+      "ganados": 0,
+      "empatados": 0,
+      "perdidos": 0,
+      "goles_favor": 0,
+      "goles_contra": 0,
+      "puntos": 0
+    },
+    {
+      "id": 12,
+      "nombre": "Ssael 2",
+      "juvenil_id": 2,
+      "jugadores": [],
+      "ganados": 0,
+      "empatados": 0,
+      "perdidos": 0,
+      "goles_favor": 0,
+      "goles_contra": 0,
+      "puntos": 0
+    },
+    {
+      "id": 13,
+      "nombre": "Pentecostes 1",
+      "juvenil_id": 3,
+      "jugadores": [],
+      "ganados": 0,
+      "empatados": 0,
+      "perdidos": 0,
+      "goles_favor": 0,
+      "goles_contra": 0,
+      "puntos": 0
+    },
+    {
+      "id": 15,
+      "nombre": "Shadai 1",
+      "juvenil_id": 6,
+      "jugadores": [],
+      "ganados": 0,
+      "empatados": 0,
+      "perdidos": 0,
+      "goles_favor": 0,
+      "goles_contra": 0,
+      "puntos": 0
+    },
+    {
+      "id": 16,
+      "nombre": "Shadai 2",
+      "juvenil_id": 6,
+      "jugadores": [],
+      "ganados": 0,
+      "empatados": 0,
+      "perdidos": 0,
+      "goles_favor": 0,
+      "goles_contra": 0,
+      "puntos": 0
+    },
+    {
+      "id": 17,
+      "nombre": "Roca Fuerte 1",
+      "juvenil_id": 7,
+      "jugadores": [],
+      "ganados": 0,
+      "empatados": 0,
+      "perdidos": 0,
+      "goles_favor": 0,
+      "goles_contra": 0,
+      "puntos": 0
+    },
+    {
+      "id": 18,
+      "nombre": "Catequistas 1",
+      "juvenil_id": 8,
+      "jugadores": [],
+      "ganados": 0,
+      "empatados": 0,
+      "perdidos": 0,
+      "goles_favor": 0,
+      "goles_contra": 0,
+      "puntos": 0
+    },
+    {
+      "id": 19,
+      "nombre": "Catequistas 2",
+      "juvenil_id": 8,
+      "jugadores": [],
+      "ganados": 0,
+      "empatados": 0,
+      "perdidos": 0,
+      "goles_favor": 0,
+      "goles_contra": 0,
+      "puntos": 0
+    },
+    {
+      "id": 20,
+      "nombre": "Jeshua 1",
+      "juvenil_id": 9,
+      "jugadores": [],
+      "ganados": 0,
+      "empatados": 0,
+      "perdidos": 0,
+      "goles_favor": 0,
+      "goles_contra": 0,
+      "puntos": 0
+    },
+    {
+      "id": 21,
+      "nombre": "Coro Mariano",
+      "juvenil_id": 10,
+      "jugadores": [],
+      "ganados": 0,
+      "empatados": 0,
+      "perdidos": 0,
+      "goles_favor": 0,
+      "goles_contra": 0,
+      "puntos": 0
+    },
+    {
+      "id": 22,
+      "nombre": "Mujeres y Hombres nuevos 1",
+      "juvenil_id": 12,
+      "jugadores": [],
+      "ganados": 0,
+      "empatados": 0,
+      "perdidos": 0,
+      "goles_favor": 0,
+      "goles_contra": 0,
+      "puntos": 0
+    },
+    {
+      "id": 23,
+      "nombre": "Mujeres y Hombres nuevos 2",
+      "juvenil_id": 12,
+      "jugadores": [],
+      "ganados": 0,
+      "empatados": 0,
+      "perdidos": 0,
+      "goles_favor": 0,
+      "goles_contra": 0,
+      "puntos": 0
+    },
+    {
+      "id": 24,
+      "nombre": "PCV 5",
+      "juvenil_id": 4,
+      "jugadores": [],
+      "ganados": 0,
+      "empatados": 0,
+      "perdidos": 0,
+      "goles_favor": 0,
+      "goles_contra": 0,
+      "puntos": 0
+    },
+    {
+      "id": 25,
+      "nombre": "PCV 4",
+      "juvenil_id": 4,
+      "jugadores": [],
+      "ganados": 0,
+      "empatados": 0,
+      "perdidos": 0,
+      "goles_favor": 0,
+      "goles_contra": 0,
+      "puntos": 0
+    },
+    {
+      "id": 26,
+      "nombre": "Jufra 1",
+      "juvenil_id": 13,
+      "jugadores": [],
+      "ganados": 0,
+      "empatados": 0,
+      "perdidos": 0,
+      "goles_favor": 0,
+      "goles_contra": 0,
+      "puntos": 0
+    }
+  ],
+  "grupos": [
+    {
+      "nombre": "Grupo A",
+      "equipos": [
+        {
+          "id": 10,
+          "nombre": "Confirmacion 1"
+        },
+        {
+          "id": 23,
+          "nombre": "Mujeres y Hombres nuevos 2"
+        },
+        {
+          "id": 25,
+          "nombre": "PCV 4"
+        },
+        {
+          "id": 11,
+          "nombre": "Ssael 1"
+        },
+        {
+          "id": 21,
+          "nombre": "Coro Mariano"
+        }
+      ],
+      "partidos": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "nombre": "Grupo B",
+      "equipos": [
+        {
+          "id": 22,
+          "nombre": "Mujeres y Hombres nuevos 1"
+        },
+        {
+          "id": 12,
+          "nombre": "Ssael 2"
+        },
+        {
+          "id": 16,
+          "nombre": "Shadai 2"
+        },
+        {
+          "id": 24,
+          "nombre": "PCV 5"
+        }
+      ],
+      "partidos": [
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ]
+    },
+    {
+      "nombre": "Grupo C",
+      "equipos": [
+        {
+          "id": 15,
+          "nombre": "Shadai 1"
+        },
+        {
+          "id": 20,
+          "nombre": "Jeshua 1"
+        },
+        {
+          "id": 19,
+          "nombre": "Catequistas 2"
+        },
+        {
+          "id": 13,
+          "nombre": "Pentecostes 1"
+        }
+      ],
+      "partidos": [
+        17,
+        18,
+        19,
+        20,
+        21,
+        22
+      ]
+    },
+    {
+      "nombre": "Grupo D",
+      "equipos": [
+        {
+          "id": 9,
+          "nombre": "Lectores 1"
+        },
+        {
+          "id": 26,
+          "nombre": "Jufra 1"
+        },
+        {
+          "id": 18,
+          "nombre": "Catequistas 1"
+        },
+        {
+          "id": 17,
+          "nombre": "Roca Fuerte 1"
+        }
+      ],
+      "partidos": [
+        23,
+        24,
+        25,
+        26,
+        27,
+        28
+      ]
+    }
+  ],
+  "partidos": [
+    {
+      "id": 1,
+      "equipo1": 10,
+      "equipo2": 23,
+      "grupo": "Grupo A",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 2,
+      "equipo1": 10,
+      "equipo2": 25,
+      "grupo": "Grupo A",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 3,
+      "equipo1": 10,
+      "equipo2": 11,
+      "grupo": "Grupo A",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 4,
+      "equipo1": 10,
+      "equipo2": 21,
+      "grupo": "Grupo A",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 5,
+      "equipo1": 23,
+      "equipo2": 25,
+      "grupo": "Grupo A",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 6,
+      "equipo1": 23,
+      "equipo2": 11,
+      "grupo": "Grupo A",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 7,
+      "equipo1": 23,
+      "equipo2": 21,
+      "grupo": "Grupo A",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 8,
+      "equipo1": 25,
+      "equipo2": 11,
+      "grupo": "Grupo A",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 9,
+      "equipo1": 25,
+      "equipo2": 21,
+      "grupo": "Grupo A",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 10,
+      "equipo1": 11,
+      "equipo2": 21,
+      "grupo": "Grupo A",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 11,
+      "equipo1": 22,
+      "equipo2": 12,
+      "grupo": "Grupo B",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 12,
+      "equipo1": 22,
+      "equipo2": 16,
+      "grupo": "Grupo B",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 13,
+      "equipo1": 22,
+      "equipo2": 24,
+      "grupo": "Grupo B",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 14,
+      "equipo1": 12,
+      "equipo2": 16,
+      "grupo": "Grupo B",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 15,
+      "equipo1": 12,
+      "equipo2": 24,
+      "grupo": "Grupo B",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 16,
+      "equipo1": 16,
+      "equipo2": 24,
+      "grupo": "Grupo B",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 17,
+      "equipo1": 15,
+      "equipo2": 20,
+      "grupo": "Grupo C",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 18,
+      "equipo1": 15,
+      "equipo2": 19,
+      "grupo": "Grupo C",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 19,
+      "equipo1": 15,
+      "equipo2": 13,
+      "grupo": "Grupo C",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 20,
+      "equipo1": 20,
+      "equipo2": 19,
+      "grupo": "Grupo C",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 21,
+      "equipo1": 20,
+      "equipo2": 13,
+      "grupo": "Grupo C",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 22,
+      "equipo1": 19,
+      "equipo2": 13,
+      "grupo": "Grupo C",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 23,
+      "equipo1": 9,
+      "equipo2": 26,
+      "grupo": "Grupo D",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 24,
+      "equipo1": 9,
+      "equipo2": 18,
+      "grupo": "Grupo D",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 25,
+      "equipo1": 9,
+      "equipo2": 17,
+      "grupo": "Grupo D",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 26,
+      "equipo1": 26,
+      "equipo2": 18,
+      "grupo": "Grupo D",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 27,
+      "equipo1": 26,
+      "equipo2": 17,
+      "grupo": "Grupo D",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    },
+    {
+      "id": 28,
+      "equipo1": 18,
+      "equipo2": 17,
+      "grupo": "Grupo D",
+      "etapa": "grupos",
+      "goles1": null,
+      "goles2": null,
+      "ganador": null,
+      "jugado": false,
+      "en_vivo": false
+    }
+  ],
+  "total_equipos": 17,
+  "configuracion": {
+    "permitir_mismo_juvenil": false,
+    "puntos_ganado": 3,
+    "puntos_empate": 1,
+    "puntos_perdido": 0
+  }
+}

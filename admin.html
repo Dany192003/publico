@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔐 Panel de Control - Torneo</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a1628;
+            color: #e8f0fe;
+            min-height: 100vh;
+            padding: 15px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        header {
+            background: linear-gradient(135deg, rgba(15,31,58,0.95), rgba(10,22,40,0.95));
+            border-radius: 16px;
+            padding: 20px 25px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(33,147,176,0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        header h1 {
+            font-size: 1.8rem;
+            background: linear-gradient(135deg, #2193b0, #6dd5ed, #48cae4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }
+        header p { color: #8ecae6; font-size: 0.85rem; margin-top: 3px; }
+        .header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .btn-volver {
+            padding: 10px 24px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            color: #e8f0fe;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .btn-volver:hover { background: rgba(255,255,255,0.15); transform: translateY(-2px); }
+        .btn-volver.danger { background: rgba(230,57,70,0.15); border-color: rgba(230,57,70,0.2); }
+        .btn-volver.danger:hover { background: rgba(230,57,70,0.25); }
+        .status {
+            padding: 6px 14px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .status.online { background: rgba(0,180,216,0.15); color: #00b4d8; border: 1px solid rgba(0,180,216,0.2); }
+        .status.offline { background: rgba(230,57,70,0.15); color: #e63946; border: 1px solid rgba(230,57,70,0.2); }
+
+        .login-box {
+            max-width: 400px;
+            margin: 80px auto;
+            background: rgba(255,255,255,0.04);
+            border-radius: 16px;
+            padding: 40px;
+            border: 1px solid rgba(255,255,255,0.06);
+            text-align: center;
+        }
+        .login-box h2 { color: #48cae4; margin-bottom: 20px; font-size: 1.5rem; }
+        .login-box input {
+            width: 100%;
+            padding: 14px 18px;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.04);
+            color: #e8f0fe;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        .login-box input:focus { outline: none; border-color: #2193b0; box-shadow: 0 0 0 3px rgba(33,147,176,0.15); }
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #2193b0, #6dd5ed);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn-login:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(33,147,176,0.4); }
+        .error-msg { color: #e63946; margin-top: 12px; font-size: 0.9rem; }
+
+        .admin-panel { display: none; }
+        .admin-panel.active { display: block; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.04);
+            padding: 18px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .stat-number {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #2193b0, #6dd5ed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .stat-label { font-size: 0.8rem; color: #8ecae6; margin-top: 4px; }
+        .stat-number.en-vivo { color: #e63946; background: linear-gradient(135deg,#e63946,#c1121f); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        .section-title {
+            color: #48cae4;
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin: 25px 0 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(33,147,176,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .btn-danger {
+            padding: 8px 20px;
+            background: linear-gradient(135deg, #e63946, #c1121f);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s ease;
+        }
+        .btn-danger:hover { transform: scale(1.05); box-shadow: 0 5px 20px rgba(230,57,70,0.4); }
+
+        .partidos-por-grupo {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            margin: 15px 0;
+        }
+        .grupo-partidos {
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: 18px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .grupo-partidos h4 {
+            color: #48cae4;
+            font-size: 1rem;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .partidos-admin {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 12px;
+        }
+        .partido-admin {
+            background: rgba(255,255,255,0.04);
+            border-radius: 10px;
+            padding: 14px 16px;
+            border: 1px solid rgba(255,255,255,0.06);
+            transition: all 0.3s ease;
+        }
+        .partido-admin.en-vivo {
+            border-color: #e63946;
+            background: rgba(230,57,70,0.08);
+            box-shadow: 0 0 20px rgba(230,57,70,0.1);
+        }
+        .partido-admin.finalizado {
+            border-color: rgba(0,180,216,0.3);
+            background: rgba(0,180,216,0.06);
+        }
+        .partido-admin:hover { border-color: rgba(33,147,176,0.2); background: rgba(255,255,255,0.06); }
+        .partido-admin .equipos {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+        .partido-admin .e1 { color: #6dd5ed; }
+        .partido-admin .e2 { color: #2193b0; }
+        .partido-admin .vs { color: #e63946; font-weight: 700; font-size: 0.7rem; }
+
+        .partido-admin .resultado-display {
+            text-align: center;
+            padding: 8px;
+            background: rgba(0,180,216,0.08);
+            border-radius: 8px;
+            margin: 8px 0;
+            font-size: 1rem;
+            color: #00b4d8;
+        }
+
+        .partido-admin .controles {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .partido-admin .controles input {
+            width: 55px;
+            padding: 6px 8px;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.04);
+            color: #e8f0fe;
+            text-align: center;
+            font-size: 15px;
+            font-weight: 700;
+        }
+        .partido-admin .controles input:focus { outline: none; border-color: #2193b0; }
+        .partido-admin .controles .btn-small {
+            padding: 6px 14px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.3s ease;
+        }
+        .btn-small.success { background: linear-gradient(135deg, #00b4d8, #0077b6); color: #fff; }
+        .btn-small.success:hover { transform: scale(1.05); box-shadow: 0 5px 20px rgba(0,180,216,0.4); }
+        .btn-small.live { background: linear-gradient(135deg, #e63946, #c1121f); color: #fff; animation: pulse 1s infinite; }
+        .btn-small.live:hover { transform: scale(1.05); }
+        .btn-small.secondary { background: rgba(255,255,255,0.08); color: #e8f0fe; border: 1px solid rgba(255,255,255,0.1); }
+        .btn-small.secondary:hover { background: rgba(255,255,255,0.15); }
+        .btn-small.danger { background: linear-gradient(135deg, #e63946, #c1121f); color: #fff; }
+        .btn-small.danger:hover { transform: scale(1.05); box-shadow: 0 5px 20px rgba(230,57,70,0.4); }
+
+        .estado {
+            font-size: 0.65rem;
+            padding: 3px 10px;
+            border-radius: 10px;
+            display: inline-block;
+            margin-top: 4px;
+        }
+        .estado.jugado { background: rgba(0,180,216,0.15); color: #00b4d8; }
+        .estado.pendiente { background: rgba(230,57,70,0.15); color: #e63946; }
+        .estado.en-vivo { background: rgba(230,57,70,0.2); color: #e63946; animation: pulse 1s infinite; }
+
+        .separador-partidos {
+            text-align: center;
+            padding: 12px 0 8px;
+            color: #8ecae6;
+            font-size: 0.8rem;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            margin-top: 8px;
+            width: 100%;
+            grid-column: 1 / -1;
+        }
+        .separador-partidos span {
+            background: rgba(255,255,255,0.04);
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            color: #6dd5ed;
+            letter-spacing: 1px;
+        }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 16px 28px;
+            border-radius: 12px;
+            font-weight: 600;
+            z-index: 999;
+            animation: slideUp 0.3s ease;
+            max-width: 400px;
+        }
+        .toast.success { background: rgba(0,180,216,0.9); color: #fff; }
+        .toast.error { background: rgba(230,57,70,0.9); color: #fff; }
+        .toast.info { background: rgba(72,202,228,0.9); color: #fff; }
+        @keyframes slideUp {
+            from { transform: translateY(100px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .loading { text-align: center; padding: 40px; color: #8ecae6; }
+        .empty-state { text-align: center; padding: 40px; color: #8ecae6; font-style: italic; }
+        .admin-footer {
+            text-align: center;
+            color: #8ecae6;
+            font-size: 0.8rem;
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+        .punto {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00b4d8;
+            margin-right: 6px;
+            animation: pulse 2s infinite;
+        }
+
+        @media (max-width: 768px) {
+            header { flex-direction: column; text-align: center; }
+            header h1 { font-size: 1.3rem; }
+            .partidos-admin { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: repeat(3, 1fr); }
+            .login-box { margin: 40px 20px; padding: 30px; }
+        }
+        @media (max-width: 480px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .partido-admin .controles { flex-direction: column; align-items: stretch; }
+            .partido-admin .controles input { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+<div class="container" id="app">
+    <header>
+        <div>
+            <h1>🔐 Panel de Control</h1>
+            <p>Administración del Torneo de Fútbol Juvenil</p>
+        </div>
+        <div class="header-actions">
+            <span class="status" :class="conectado ? 'online' : 'offline'">
+                {{ conectado ? '✅ Conectado' : '❌ Desconectado' }}
+            </span>
+            <a href="/index.html" class="btn-volver">👀 Ver Pública</a>
+            <button @click="cerrarSesion" v-if="autenticado" class="btn-volver danger">🚪 Salir</button>
+        </div>
+    </header>
+
+    <div class="login-box" v-if="!autenticado">
+        <h2>🔐 Acceso Administrador</h2>
+        <p style="color:#8ecae6;margin-bottom:20px;">Ingresa la contraseña para gestionar el torneo</p>
+        <input type="password" v-model="password" placeholder="Contraseña" @keyup.enter="login()">
+        <button class="btn-login" @click="login()">Ingresar</button>
+        <div class="error-msg" v-if="errorLogin">{{ errorLogin }}</div>
+    </div>
+
+    <div class="admin-panel" :class="{ active: autenticado }" v-if="autenticado">
+        <div v-if="cargando" class="loading"><p>⏳ Cargando datos...</p></div>
+
+        <div v-else-if="datos">
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-number">{{ datos.juveniles?.length || 0 }}</div><div class="stat-label">👥 Juveniles</div></div>
+                <div class="stat-card"><div class="stat-number">{{ datos.equipos?.length || 0 }}</div><div class="stat-label">🏆 Equipos</div></div>
+                <div class="stat-card"><div class="stat-number">{{ datos.grupos?.length || 0 }}</div><div class="stat-label">📋 Grupos</div></div>
+                <div class="stat-card"><div class="stat-number">{{ partidosJugados }}</div><div class="stat-label">✅ Jugados</div></div>
+                <div class="stat-card"><div class="stat-number">{{ partidosPendientes }}</div><div class="stat-label">⏳ Pendientes</div></div>
+                <div class="stat-card" v-if="partidoEnVivo">
+                    <div class="stat-number en-vivo">🔴</div>
+                    <div class="stat-label">EN VIVO</div>
+                </div>
+            </div>
+
+            <div class="section-title">
+                <span>📝 Gestionar Partidos</span>
+                <button class="btn-danger" @click="reiniciarResultados">🔄 Reiniciar Todos</button>
+            </div>
+
+            <div class="partidos-por-grupo">
+                <div v-for="grupo in datos.grupos" :key="grupo.nombre" class="grupo-partidos">
+                    <h4>{{ grupo.nombre }}</h4>
+                    <div class="partidos-admin">
+                        <!-- PRIMERO: Partidos finalizados -->
+                        <div v-for="partido in getPartidosFinalizados(grupo.nombre)" 
+                             :key="partido.id" 
+                             class="partido-admin finalizado">
+                            <div class="equipos">
+                                <span class="e1">{{ partido.equipo1 }}</span>
+                                <span class="vs">vs</span>
+                                <span class="e2">{{ partido.equipo2 }}</span>
+                            </div>
+
+                            <div class="resultado-display">
+                                🏆 <strong>{{ partido.goles1 }} - {{ partido.goles2 }}</strong>
+                                <span v-if="partido.ganador" style="margin-left:10px;color:#48cae4;font-size:0.85rem;">
+                                    Ganador: {{ partido.ganador }}
+                                </span>
+                            </div>
+
+                            <div class="controles">
+                                <button class="btn-small secondary" @click="editarResultado(partido)">
+                                    ✏️ Editar
+                                </button>
+                                <button class="btn-small danger" @click="eliminarResultado(partido)">
+                                    🗑️ Quitar
+                                </button>
+                            </div>
+
+                            <div>
+                                <span class="estado jugado">✅ Finalizado</span>
+                            </div>
+                        </div>
+
+                        <!-- Separador si hay ambos tipos -->
+                        <div v-if="getPartidosFinalizados(grupo.nombre).length > 0 && getPartidosPendientes(grupo.nombre).length > 0" 
+                             class="separador-partidos">
+                            <span>━━━ Partidos Pendientes ━━━</span>
+                        </div>
+
+                        <!-- DESPUÉS: Partidos pendientes -->
+                        <div v-for="partido in getPartidosPendientes(grupo.nombre)" 
+                             :key="partido.id" 
+                             class="partido-admin" 
+                             :class="{ 'en-vivo': partido.en_vivo }">
+                            <div class="equipos">
+                                <span class="e1">{{ partido.equipo1 }}</span>
+                                <span class="vs">vs</span>
+                                <span class="e2">{{ partido.equipo2 }}</span>
+                            </div>
+
+                            <div class="controles">
+                                <input type="number" v-model.number="partido.goles1_temp" placeholder="0" min="0">
+                                <span style="color:#8ecae6;font-weight:700;">-</span>
+                                <input type="number" v-model.number="partido.goles2_temp" placeholder="0" min="0">
+                                <button class="btn-small success" @click="registrarResultado(partido)">
+                                    💾 Guardar
+                                </button>
+                                <button class="btn-small" :class="partido.en_vivo ? 'live' : 'secondary'" 
+                                        @click="toggleEnVivo(partido)">
+                                    {{ partido.en_vivo ? '🔴 En Vivo' : '▶️ Iniciar' }}
+                                </button>
+                            </div>
+
+                            <div>
+                                <span class="estado" :class="partido.en_vivo ? 'en-vivo' : 'pendiente'">
+                                    {{ partido.en_vivo ? '🔴 EN VIVO' : '⏳ Pendiente' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="admin-footer">
+                <span class="punto"></span>
+                Última actualización: {{ ultimaActualizacion }}
+                <span style="margin-left:15px;">Auto-refresh cada 30s</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+const { createApp } = Vue;
+
+createApp({
+    data() {
+        return {
+            autenticado: false,
+            password: '',
+            errorLogin: '',
+            token: '',
+            datos: null,
+            cargando: false,
+            conectado: false,
+            ultimaActualizacion: '-',
+            intervalo: null
+        };
+    },
+    computed: {
+        partidosJugados() {
+            return this.datos?.partidos?.filter(p => p.jugado).length || 0;
+        },
+        partidosPendientes() {
+            return this.datos?.partidos?.filter(p => !p.jugado).length || 0;
+        },
+        partidoEnVivo() {
+            return this.datos?.partidos?.some(p => p.en_vivo) || false;
+        }
+    },
+    methods: {
+        async login() {
+            if (!this.password) {
+                this.errorLogin = 'Ingresa la contraseña';
+                return;
+            }
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: this.password })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    this.token = data.token;
+                    this.autenticado = true;
+                    this.errorLogin = '';
+                    localStorage.setItem('admin_token', data.token);
+                    await this.cargarDatos();
+                    this.mostrarToast('✅ Sesión iniciada correctamente', 'success');
+                } else {
+                    this.errorLogin = '❌ Contraseña incorrecta';
+                }
+            } catch (error) {
+                this.errorLogin = '❌ Error de conexión';
+                console.error(error);
+            }
+        },
+        cerrarSesion() {
+            this.autenticado = false;
+            this.token = '';
+            localStorage.removeItem('admin_token');
+            this.password = '';
+            this.mostrarToast('Sesión cerrada', 'info');
+        },
+        async cargarDatos() {
+            if (!this.token) return;
+            this.cargando = true;
+            try {
+                const response = await fetch('/api/torneo', {
+                    headers: { 'Authorization': `Bearer ${this.token}` }
+                });
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        this.cerrarSesion();
+                        return;
+                    }
+                    throw new Error('Error al cargar datos');
+                }
+                const data = await response.json();
+                data.partidos.forEach(p => {
+                    p.goles1_temp = p.goles1 || 0;
+                    p.goles2_temp = p.goles2 || 0;
+                });
+                this.datos = data;
+                this.conectado = true;
+                this.ultimaActualizacion = new Date().toLocaleString();
+            } catch (error) {
+                console.error('Error:', error);
+                this.conectado = false;
+                this.mostrarToast('❌ Error al cargar datos', 'error');
+            } finally {
+                this.cargando = false;
+            }
+        },
+        getPartidosFinalizados(nombreGrupo) {
+            if (!this.datos?.partidos) return [];
+            return this.datos.partidos
+                .filter(p => p.grupo === nombreGrupo && p.jugado === true)
+                .sort((a, b) => a.id - b.id);
+        },
+        getPartidosPendientes(nombreGrupo) {
+            if (!this.datos?.partidos) return [];
+            return this.datos.partidos
+                .filter(p => p.grupo === nombreGrupo && p.jugado === false)
+                .sort((a, b) => a.id - b.id);
+        },
+        async registrarResultado(partido) {
+            if (partido.goles1_temp === undefined || partido.goles2_temp === undefined) {
+                this.mostrarToast('❌ Ingresa ambos goles', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/partidos/${partido.id}/resultado`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.token}`
+                    },
+                    body: JSON.stringify({
+                        goles1: partido.goles1_temp,
+                        goles2: partido.goles2_temp
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    this.mostrarToast(`✅ ${partido.equipo1} ${partido.goles1_temp} - ${partido.goles2_temp} ${partido.equipo2}`, 'success');
+                    await this.cargarDatos();
+                } else {
+                    this.mostrarToast('❌ Error al registrar resultado', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                this.mostrarToast('❌ Error de conexión', 'error');
+            }
+        },
+        async toggleEnVivo(partido) {
+            const nuevoEstado = !partido.en_vivo;
+            try {
+                const response = await fetch(`/api/partidos/${partido.id}/en_vivo`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.token}`
+                    },
+                    body: JSON.stringify({ en_vivo: nuevoEstado })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    this.mostrarToast(nuevoEstado ? '🔴 Partido en vivo' : '⏹️ Partido finalizado', 'info');
+                    await this.cargarDatos();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                this.mostrarToast('❌ Error al cambiar estado', 'error');
+            }
+        },
+        async editarResultado(partido) {
+            partido.goles1_temp = partido.goles1 || 0;
+            partido.goles2_temp = partido.goles2 || 0;
+            partido.jugado = false;
+            await this.cargarDatos();
+            this.mostrarToast('✏️ Edita los goles y guarda nuevamente', 'info');
+        },
+        async eliminarResultado(partido) {
+            if (!confirm(`¿Eliminar el resultado de ${partido.equipo1} vs ${partido.equipo2}?`)) return;
+            try {
+                const response = await fetch(`/api/partidos/${partido.id}/resultado`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${this.token}`
+                    }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    this.mostrarToast('🗑️ Resultado eliminado', 'success');
+                    await this.cargarDatos();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                this.mostrarToast('❌ Error al eliminar resultado', 'error');
+            }
+        },
+        async reiniciarResultados() {
+            if (!confirm('⚠️ ¿Estás seguro de reiniciar TODOS los resultados? Esta acción no se puede deshacer.')) {
+                return;
+            }
+            try {
+                const response = await fetch('/api/reiniciar', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${this.token}` }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    this.mostrarToast('🔄 Todos los resultados reiniciados', 'success');
+                    await this.cargarDatos();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                this.mostrarToast('❌ Error al reiniciar', 'error');
+            }
+        },
+        mostrarToast(mensaje, tipo = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${tipo}`;
+            toast.textContent = mensaje;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100px)';
+                toast.style.transition = 'all 0.5s ease';
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        }
+    },
+    mounted() {
+        const savedToken = localStorage.getItem('admin_token');
+        if (savedToken) {
+            this.token = savedToken;
+            this.autenticado = true;
+            this.cargarDatos();
+        }
+        this.intervalo = setInterval(() => {
+            if (this.autenticado && !this.cargando) {
+                this.cargarDatos();
+            }
+        }, 30000);
+    },
+    beforeUnmount() {
+        if (this.intervalo) clearInterval(this.intervalo);
+    }
+}).mount('#app');
+</script>
+</body>
+</html>
