@@ -55,13 +55,17 @@ async function getTorneoPrincipal() {
     return torneo;
 }
 
-// ===== CALCULAR ESTADÍSTICAS =====
+// ===== CALCULAR ESTADÍSTICAS (CORREGIDO) =====
 async function calcularEstadisticas(torneoId) {
+    console.log('📊 Recalculando estadísticas...');
+    
+    // Obtener todos los equipos del torneo
     const { data: equipos } = await supabase
         .from('equipos')
         .select('*')
         .eq('torneo_id', torneoId);
 
+    // Reiniciar estadísticas de todos los equipos a 0
     for (const equipo of equipos || []) {
         await supabase
             .from('equipos')
@@ -74,80 +78,111 @@ async function calcularEstadisticas(torneoId) {
                 puntos: 0
             })
             .eq('id', equipo.id);
+        console.log(`   ↺ Reiniciado: ${equipo.nombre}`);
     }
 
-    const { data: partidos } = await supabase
+    // Obtener partidos jugados
+    const { data: partidosJugados } = await supabase
         .from('partidos')
         .select('*')
         .eq('torneo_id', torneoId)
         .eq('jugado', true);
 
-    for (const p of partidos || []) {
+    console.log(`   📋 Partidos jugados encontrados: ${partidosJugados?.length || 0}`);
+
+    // Calcular estadísticas basadas en partidos jugados
+    for (const p of partidosJugados || []) {
         const equipo1 = equipos?.find(e => e.id === p.equipo1_id);
         const equipo2 = equipos?.find(e => e.id === p.equipo2_id);
-        if (!equipo1 || !equipo2) continue;
+        
+        if (!equipo1 || !equipo2) {
+            console.log(`   ⚠️ Partido ${p.id}: equipo no encontrado`);
+            continue;
+        }
 
+        // Obtener valores actuales
+        const { data: e1Actual } = await supabase
+            .from('equipos')
+            .select('ganados, empatados, perdidos, goles_favor, goles_contra, puntos')
+            .eq('id', equipo1.id)
+            .single();
+        
+        const { data: e2Actual } = await supabase
+            .from('equipos')
+            .select('ganados, empatados, perdidos, goles_favor, goles_contra, puntos')
+            .eq('id', equipo2.id)
+            .single();
+
+        const g1 = p.goles1 || 0;
+        const g2 = p.goles2 || 0;
+
+        // Actualizar goles
         await supabase
             .from('equipos')
             .update({
-                goles_favor: equipo1.goles_favor + (p.goles1 || 0),
-                goles_contra: equipo1.goles_contra + (p.goles2 || 0)
+                goles_favor: e1Actual.goles_favor + g1,
+                goles_contra: e1Actual.goles_contra + g2
             })
             .eq('id', equipo1.id);
 
         await supabase
             .from('equipos')
             .update({
-                goles_favor: equipo2.goles_favor + (p.goles2 || 0),
-                goles_contra: equipo2.goles_contra + (p.goles1 || 0)
+                goles_favor: e2Actual.goles_favor + g2,
+                goles_contra: e2Actual.goles_contra + g1
             })
             .eq('id', equipo2.id);
 
-        if ((p.goles1 || 0) > (p.goles2 || 0)) {
+        // Actualizar resultados
+        if (g1 > g2) {
             await supabase
                 .from('equipos')
                 .update({
-                    ganados: equipo1.ganados + 1,
-                    puntos: equipo1.puntos + 3
+                    ganados: e1Actual.ganados + 1,
+                    puntos: e1Actual.puntos + 3
                 })
                 .eq('id', equipo1.id);
             await supabase
                 .from('equipos')
                 .update({
-                    perdidos: equipo2.perdidos + 1
+                    perdidos: e2Actual.perdidos + 1
                 })
                 .eq('id', equipo2.id);
-        } else if ((p.goles2 || 0) > (p.goles1 || 0)) {
+            console.log(`   ✅ ${equipo1.nombre} gana ${g1}-${g2} a ${equipo2.nombre}`);
+        } else if (g2 > g1) {
             await supabase
                 .from('equipos')
                 .update({
-                    ganados: equipo2.ganados + 1,
-                    puntos: equipo2.puntos + 3
+                    ganados: e2Actual.ganados + 1,
+                    puntos: e2Actual.puntos + 3
                 })
                 .eq('id', equipo2.id);
             await supabase
                 .from('equipos')
                 .update({
-                    perdidos: equipo1.perdidos + 1
+                    perdidos: e1Actual.perdidos + 1
                 })
                 .eq('id', equipo1.id);
+            console.log(`   ✅ ${equipo2.nombre} gana ${g2}-${g1} a ${equipo1.nombre}`);
         } else {
             await supabase
                 .from('equipos')
                 .update({
-                    empatados: equipo1.empatados + 1,
-                    puntos: equipo1.puntos + 1
+                    empatados: e1Actual.empatados + 1,
+                    puntos: e1Actual.puntos + 1
                 })
                 .eq('id', equipo1.id);
             await supabase
                 .from('equipos')
                 .update({
-                    empatados: equipo2.empatados + 1,
-                    puntos: equipo2.puntos + 1
+                    empatados: e2Actual.empatados + 1,
+                    puntos: e2Actual.puntos + 1
                 })
                 .eq('id', equipo2.id);
+            console.log(`   🤝 Empate ${g1}-${g2} entre ${equipo1.nombre} y ${equipo2.nombre}`);
         }
     }
+    console.log('✅ Estadísticas recalculadas correctamente');
 }
 
 // ===== RUTAS =====
@@ -224,10 +259,10 @@ app.get('/api/torneo', async (req, res) => {
             };
         }));
 
-        // ORDENAR: Pendientes primero, finalizados después
+        // ORDENAR: Finalizados primero, pendientes después
         partidos.sort((a, b) => {
             if (a.jugado !== b.jugado) {
-                return a.jugado ? 1 : -1;
+                return a.jugado ? -1 : 1;
             }
             return a.id - b.id;
         });
@@ -250,6 +285,12 @@ app.get('/api/torneo', async (req, res) => {
 app.post('/api/partidos/:id/resultado', verificarToken, async (req, res) => {
     const { id } = req.params;
     const { goles1, goles2 } = req.body;
+
+    if (goles1 === undefined || goles2 === undefined) {
+        return res.status(400).json({ error: 'Goles son requeridos' });
+    }
+
+    console.log(`⚽ Registrando resultado para partido ${id}: ${goles1} - ${goles2}`);
 
     try {
         const { data: partido } = await supabase
@@ -292,11 +333,38 @@ app.post('/api/partidos/:id/resultado', verificarToken, async (req, res) => {
             })
             .eq('id', id);
 
+        console.log(`   ✅ Partido ${id} actualizado`);
+
         await calcularEstadisticas(partido.torneo_id);
 
-        res.json({ success: true, message: 'Resultado registrado' });
+        const { data: partidoActualizado } = await supabase
+            .from('partidos')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        const { data: e1 } = await supabase
+            .from('equipos')
+            .select('nombre')
+            .eq('id', partidoActualizado.equipo1_id)
+            .single();
+        const { data: e2 } = await supabase
+            .from('equipos')
+            .select('nombre')
+            .eq('id', partidoActualizado.equipo2_id)
+            .single();
+
+        res.json({
+            success: true,
+            message: 'Resultado registrado',
+            partido: {
+                ...partidoActualizado,
+                equipo1: e1?.nombre,
+                equipo2: e2?.nombre
+            }
+        });
     } catch (error) {
-        console.error('Error:', error);
+        console.error('❌ Error:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -354,8 +422,9 @@ app.delete('/api/partidos/:id/resultado', verificarToken, async (req, res) => {
 app.post('/api/reiniciar', verificarToken, async (req, res) => {
     try {
         const torneo = await getTorneoPrincipal();
+        console.log(`🔄 Reiniciando torneo ${torneo.nombre} (ID: ${torneo.id})`);
 
-        await supabase
+        const { error: partidosError } = await supabase
             .from('partidos')
             .update({
                 goles1: null,
@@ -365,8 +434,14 @@ app.post('/api/reiniciar', verificarToken, async (req, res) => {
                 en_vivo: false
             })
             .eq('torneo_id', torneo.id);
+        
+        if (partidosError) {
+            console.error('❌ Error reiniciando partidos:', partidosError);
+            return res.status(500).json({ error: partidosError.message });
+        }
+        console.log('   ✅ Partidos reiniciados');
 
-        await supabase
+        const { error: equiposError } = await supabase
             .from('equipos')
             .update({
                 ganados: 0,
@@ -377,9 +452,16 @@ app.post('/api/reiniciar', verificarToken, async (req, res) => {
                 puntos: 0
             })
             .eq('torneo_id', torneo.id);
+        
+        if (equiposError) {
+            console.error('❌ Error reiniciando equipos:', equiposError);
+            return res.status(500).json({ error: equiposError.message });
+        }
+        console.log('   ✅ Estadísticas de equipos reiniciadas');
 
-        res.json({ success: true, message: 'Resultados reiniciados' });
+        res.json({ success: true, message: 'Todos los resultados reiniciados' });
     } catch (error) {
+        console.error('❌ Error en reiniciar:', error);
         res.status(500).json({ error: error.message });
     }
 });

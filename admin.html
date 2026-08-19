@@ -496,7 +496,7 @@
             <div class="admin-footer">
                 <span class="punto"></span>
                 Última actualización: {{ ultimaActualizacion }}
-                <span style="margin-left:15px;">Auto-refresh cada 30s</span>
+                <span style="margin-left:15px;">Auto-refresh cada 60s</span>
             </div>
         </div>
     </div>
@@ -519,7 +519,7 @@ createApp({
             conectado: false,
             ultimaActualizacion: '-',
             intervalo: null,
-            partidosEditando: [] // IDs de partidos en edición
+            partidosEditando: []
         };
     },
     computed: {
@@ -669,10 +669,8 @@ createApp({
             }
         },
         editarResultado(partido) {
-            // Agregar partido a la lista de edición
             if (!this.partidosEditando.includes(partido.id)) {
                 this.partidosEditando.push(partido.id);
-                // Copiar los valores actuales
                 partido.goles1_temp = partido.goles1 || 0;
                 partido.goles2_temp = partido.goles2 || 0;
                 this.mostrarToast(`✏️ Editando ${partido.equipo1} vs ${partido.equipo2}`, 'warning');
@@ -685,7 +683,6 @@ createApp({
             }
 
             try {
-                // Primero eliminar el resultado anterior
                 const deleteResponse = await fetch(`/api/partidos/${partido.id}/resultado`, {
                     method: 'DELETE',
                     headers: {
@@ -697,7 +694,6 @@ createApp({
                     throw new Error('Error al eliminar resultado anterior');
                 }
 
-                // Luego guardar el nuevo resultado
                 const saveResponse = await fetch(`/api/partidos/${partido.id}/resultado`, {
                     method: 'POST',
                     headers: {
@@ -712,7 +708,6 @@ createApp({
                 const data = await saveResponse.json();
                 
                 if (data.success) {
-                    // Quitar de la lista de edición
                     this.partidosEditando = this.partidosEditando.filter(id => id !== partido.id);
                     this.mostrarToast(`✅ Editado: ${partido.equipo1} ${partido.goles1_temp} - ${partido.goles2_temp} ${partido.equipo2}`, 'success');
                     await this.cargarDatos();
