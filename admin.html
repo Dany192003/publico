@@ -190,6 +190,10 @@
             border-color: rgba(0,180,216,0.3);
             background: rgba(0,180,216,0.06);
         }
+        .partido-admin.editando {
+            border-color: #f39c12;
+            background: rgba(243,156,18,0.08);
+        }
         .partido-admin:hover { border-color: rgba(33,147,176,0.2); background: rgba(255,255,255,0.06); }
         .partido-admin .equipos {
             display: flex;
@@ -249,6 +253,10 @@
         .btn-small.secondary:hover { background: rgba(255,255,255,0.15); }
         .btn-small.danger { background: linear-gradient(135deg, #e63946, #c1121f); color: #fff; }
         .btn-small.danger:hover { transform: scale(1.05); box-shadow: 0 5px 20px rgba(230,57,70,0.4); }
+        .btn-small.warning { background: linear-gradient(135deg, #f39c12, #e67e22); color: #fff; }
+        .btn-small.warning:hover { transform: scale(1.05); box-shadow: 0 5px 20px rgba(243,156,18,0.4); }
+        .btn-small.cancel { background: rgba(255,255,255,0.08); color: #e8f0fe; border: 1px solid rgba(255,255,255,0.1); }
+        .btn-small.cancel:hover { background: rgba(255,255,255,0.15); }
 
         .estado {
             font-size: 0.65rem;
@@ -260,6 +268,7 @@
         .estado.jugado { background: rgba(0,180,216,0.15); color: #00b4d8; }
         .estado.pendiente { background: rgba(230,57,70,0.15); color: #e63946; }
         .estado.en-vivo { background: rgba(230,57,70,0.2); color: #e63946; animation: pulse 1s infinite; }
+        .estado.editando { background: rgba(243,156,18,0.2); color: #f39c12; }
 
         .separador-partidos {
             text-align: center;
@@ -296,6 +305,7 @@
         .toast.success { background: rgba(0,180,216,0.9); color: #fff; }
         .toast.error { background: rgba(230,57,70,0.9); color: #fff; }
         .toast.info { background: rgba(72,202,228,0.9); color: #fff; }
+        .toast.warning { background: rgba(243,156,18,0.9); color: #fff; }
         @keyframes slideUp {
             from { transform: translateY(100px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
@@ -384,8 +394,8 @@
                 <div v-for="grupo in datos.grupos" :key="grupo.nombre" class="grupo-partidos">
                     <h4>{{ grupo.nombre }}</h4>
                     <div class="partidos-admin">
-                        <!-- PRIMERO: Partidos finalizados -->
-                        <div v-for="partido in getPartidosFinalizados(grupo.nombre)" 
+                        <!-- PRIMERO: Partidos finalizados (no en edición) -->
+                        <div v-for="partido in getPartidosFinalizadosNoEditando(grupo.nombre)" 
                              :key="partido.id" 
                              class="partido-admin finalizado">
                             <div class="equipos">
@@ -415,9 +425,37 @@
                             </div>
                         </div>
 
-                        <!-- Separador si hay ambos tipos -->
-                        <div v-if="getPartidosFinalizados(grupo.nombre).length > 0 && getPartidosPendientes(grupo.nombre).length > 0" 
-                             class="separador-partidos">
+                        <!-- Partidos en edición -->
+                        <div v-for="partido in getPartidosEnEdicion(grupo.nombre)" 
+                             :key="partido.id" 
+                             class="partido-admin editando">
+                            <div class="equipos">
+                                <span class="e1">{{ partido.equipo1 }}</span>
+                                <span class="vs">vs</span>
+                                <span class="e2">{{ partido.equipo2 }}</span>
+                            </div>
+
+                            <div class="controles">
+                                <input type="number" v-model.number="partido.goles1_temp" placeholder="0" min="0">
+                                <span style="color:#8ecae6;font-weight:700;">-</span>
+                                <input type="number" v-model.number="partido.goles2_temp" placeholder="0" min="0">
+                                <button class="btn-small success" @click="guardarEdicion(partido)">
+                                    💾 Guardar
+                                </button>
+                                <button class="btn-small cancel" @click="cancelarEdicion(partido)">
+                                    ❌ Cancelar
+                                </button>
+                            </div>
+
+                            <div>
+                                <span class="estado editando">✏️ Editando</span>
+                            </div>
+                        </div>
+
+                        <!-- Separador -->
+                        <div v-if="getPartidosFinalizadosNoEditando(grupo.nombre).length > 0 || getPartidosEnEdicion(grupo.nombre).length > 0" 
+                             class="separador-partidos" 
+                             v-show="getPartidosPendientes(grupo.nombre).length > 0">
                             <span>━━━ Partidos Pendientes ━━━</span>
                         </div>
 
@@ -480,7 +518,8 @@ createApp({
             cargando: false,
             conectado: false,
             ultimaActualizacion: '-',
-            intervalo: null
+            intervalo: null,
+            partidosEditando: [] // IDs de partidos en edición
         };
     },
     computed: {
@@ -527,6 +566,7 @@ createApp({
             this.token = '';
             localStorage.removeItem('admin_token');
             this.password = '';
+            this.partidosEditando = [];
             this.mostrarToast('Sesión cerrada', 'info');
         },
         async cargarDatos() {
@@ -559,16 +599,22 @@ createApp({
                 this.cargando = false;
             }
         },
-        getPartidosFinalizados(nombreGrupo) {
+        getPartidosFinalizadosNoEditando(nombreGrupo) {
             if (!this.datos?.partidos) return [];
             return this.datos.partidos
-                .filter(p => p.grupo === nombreGrupo && p.jugado === true)
+                .filter(p => p.grupo === nombreGrupo && p.jugado === true && !this.partidosEditando.includes(p.id))
+                .sort((a, b) => a.id - b.id);
+        },
+        getPartidosEnEdicion(nombreGrupo) {
+            if (!this.datos?.partidos) return [];
+            return this.datos.partidos
+                .filter(p => p.grupo === nombreGrupo && this.partidosEditando.includes(p.id))
                 .sort((a, b) => a.id - b.id);
         },
         getPartidosPendientes(nombreGrupo) {
             if (!this.datos?.partidos) return [];
             return this.datos.partidos
-                .filter(p => p.grupo === nombreGrupo && p.jugado === false)
+                .filter(p => p.grupo === nombreGrupo && p.jugado === false && !this.partidosEditando.includes(p.id))
                 .sort((a, b) => a.id - b.id);
         },
         async registrarResultado(partido) {
@@ -622,12 +668,65 @@ createApp({
                 this.mostrarToast('❌ Error al cambiar estado', 'error');
             }
         },
-        async editarResultado(partido) {
-            partido.goles1_temp = partido.goles1 || 0;
-            partido.goles2_temp = partido.goles2 || 0;
-            partido.jugado = false;
-            await this.cargarDatos();
-            this.mostrarToast('✏️ Edita los goles y guarda nuevamente', 'info');
+        editarResultado(partido) {
+            // Agregar partido a la lista de edición
+            if (!this.partidosEditando.includes(partido.id)) {
+                this.partidosEditando.push(partido.id);
+                // Copiar los valores actuales
+                partido.goles1_temp = partido.goles1 || 0;
+                partido.goles2_temp = partido.goles2 || 0;
+                this.mostrarToast(`✏️ Editando ${partido.equipo1} vs ${partido.equipo2}`, 'warning');
+            }
+        },
+        async guardarEdicion(partido) {
+            if (partido.goles1_temp === undefined || partido.goles2_temp === undefined) {
+                this.mostrarToast('❌ Ingresa ambos goles', 'error');
+                return;
+            }
+
+            try {
+                // Primero eliminar el resultado anterior
+                const deleteResponse = await fetch(`/api/partidos/${partido.id}/resultado`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${this.token}`
+                    }
+                });
+                
+                if (!deleteResponse.ok) {
+                    throw new Error('Error al eliminar resultado anterior');
+                }
+
+                // Luego guardar el nuevo resultado
+                const saveResponse = await fetch(`/api/partidos/${partido.id}/resultado`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.token}`
+                    },
+                    body: JSON.stringify({
+                        goles1: partido.goles1_temp,
+                        goles2: partido.goles2_temp
+                    })
+                });
+                const data = await saveResponse.json();
+                
+                if (data.success) {
+                    // Quitar de la lista de edición
+                    this.partidosEditando = this.partidosEditando.filter(id => id !== partido.id);
+                    this.mostrarToast(`✅ Editado: ${partido.equipo1} ${partido.goles1_temp} - ${partido.goles2_temp} ${partido.equipo2}`, 'success');
+                    await this.cargarDatos();
+                } else {
+                    this.mostrarToast('❌ Error al guardar edición', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                this.mostrarToast('❌ Error de conexión', 'error');
+            }
+        },
+        cancelarEdicion(partido) {
+            this.partidosEditando = this.partidosEditando.filter(id => id !== partido.id);
+            this.mostrarToast('✖ Edición cancelada', 'info');
         },
         async eliminarResultado(partido) {
             if (!confirm(`¿Eliminar el resultado de ${partido.equipo1} vs ${partido.equipo2}?`)) return;
@@ -659,6 +758,7 @@ createApp({
                 });
                 const data = await response.json();
                 if (data.success) {
+                    this.partidosEditando = [];
                     this.mostrarToast('🔄 Todos los resultados reiniciados', 'success');
                     await this.cargarDatos();
                 }
