@@ -15,9 +15,15 @@ const supabase = createClient(
     process.env.SUPABASE_KEY
 );
 
+// ===== MIDDLEWARE =====
 app.use(cors());
 app.use(express.json());
-app.use(express.static('.'));
+app.use(express.static('.'));  // Sirve archivos estáticos
+
+// ===== RUTA RAÍZ =====
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/index.html');
+});
 
 // ===== VERIFICAR TOKEN =====
 function verificarToken(req, res, next) {
@@ -55,17 +61,15 @@ async function getTorneoPrincipal() {
     return torneo;
 }
 
-// ===== CALCULAR ESTADÍSTICAS (CORREGIDO) =====
+// ===== CALCULAR ESTADÍSTICAS =====
 async function calcularEstadisticas(torneoId) {
     console.log('📊 Recalculando estadísticas...');
     
-    // Obtener todos los equipos del torneo
     const { data: equipos } = await supabase
         .from('equipos')
         .select('*')
         .eq('torneo_id', torneoId);
 
-    // Reiniciar estadísticas de todos los equipos a 0
     for (const equipo of equipos || []) {
         await supabase
             .from('equipos')
@@ -81,7 +85,6 @@ async function calcularEstadisticas(torneoId) {
         console.log(`   ↺ Reiniciado: ${equipo.nombre}`);
     }
 
-    // Obtener partidos jugados
     const { data: partidosJugados } = await supabase
         .from('partidos')
         .select('*')
@@ -90,7 +93,6 @@ async function calcularEstadisticas(torneoId) {
 
     console.log(`   📋 Partidos jugados encontrados: ${partidosJugados?.length || 0}`);
 
-    // Calcular estadísticas basadas en partidos jugados
     for (const p of partidosJugados || []) {
         const equipo1 = equipos?.find(e => e.id === p.equipo1_id);
         const equipo2 = equipos?.find(e => e.id === p.equipo2_id);
@@ -100,7 +102,6 @@ async function calcularEstadisticas(torneoId) {
             continue;
         }
 
-        // Obtener valores actuales
         const { data: e1Actual } = await supabase
             .from('equipos')
             .select('ganados, empatados, perdidos, goles_favor, goles_contra, puntos')
@@ -116,7 +117,6 @@ async function calcularEstadisticas(torneoId) {
         const g1 = p.goles1 || 0;
         const g2 = p.goles2 || 0;
 
-        // Actualizar goles
         await supabase
             .from('equipos')
             .update({
@@ -133,7 +133,6 @@ async function calcularEstadisticas(torneoId) {
             })
             .eq('id', equipo2.id);
 
-        // Actualizar resultados
         if (g1 > g2) {
             await supabase
                 .from('equipos')
@@ -185,7 +184,7 @@ async function calcularEstadisticas(torneoId) {
     console.log('✅ Estadísticas recalculadas correctamente');
 }
 
-// ===== RUTAS =====
+// ===== RUTAS DE API =====
 
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'Servidor con Supabase' });
@@ -259,7 +258,6 @@ app.get('/api/torneo', async (req, res) => {
             };
         }));
 
-        // ORDENAR: Finalizados primero, pendientes después
         partidos.sort((a, b) => {
             if (a.jugado !== b.jugado) {
                 return a.jugado ? -1 : 1;
@@ -466,6 +464,17 @@ app.post('/api/reiniciar', verificarToken, async (req, res) => {
     }
 });
 
+// ===== RUTA PARA CUALQUIER OTRA URL (SIEMPRE DEVOLVER index.html) =====
+app.get('*', (req, res) => {
+    // Si es una ruta de API, devolver 404
+    if (req.path.startsWith('/api')) {
+        return res.status(404).json({ error: 'API endpoint no encontrado' });
+    }
+    // Si no, devolver index.html
+    res.sendFile(__dirname + '/index.html');
+});
+
+// ===== INICIAR SERVIDOR =====
 app.listen(PORT, () => {
     console.log(`🚀 Servidor con Supabase en http://localhost:${PORT}`);
     console.log(`🔐 Admin: http://localhost:${PORT}/admin.html`);
