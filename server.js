@@ -18,7 +18,7 @@ const supabase = createClient(
 // ===== MIDDLEWARE =====
 app.use(cors());
 app.use(express.json());
-app.use(express.static('.'));  // Sirve archivos estáticos
+app.use(express.static('.'));
 
 // ===== RUTA RAÍZ =====
 app.get('/', (req, res) => {
@@ -280,6 +280,47 @@ app.get('/api/torneo', async (req, res) => {
     }
 });
 
+// ===== EVENTOS EN TIEMPO REAL (SSE) =====
+app.get('/api/events', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    // Mantener la conexión abierta
+    const keepAlive = setInterval(() => {
+        res.write(': keep-alive\n\n');
+    }, 30000);
+
+    // Escuchar cambios en Supabase
+    const channel = supabase
+        .channel('public:partidos')
+        .on('postgres_changes', 
+            { event: '*', schema: 'public', table: 'partidos' },
+            (payload) => {
+                console.log('📡 Cambio detectado en partidos:', payload);
+                res.write(`data: ${JSON.stringify({ table: 'partidos', event: payload.eventType })}\n\n`);
+            }
+        )
+        .on('postgres_changes',
+            { event: '*', schema: 'public', table: 'equipos' },
+            (payload) => {
+                console.log('📡 Cambio detectado en equipos:', payload);
+                res.write(`data: ${JSON.stringify({ table: 'equipos', event: payload.eventType })}\n\n`);
+            }
+        )
+        .subscribe();
+
+    // Limpiar cuando se cierra la conexión
+    req.on('close', () => {
+        clearInterval(keepAlive);
+        channel.unsubscribe();
+        res.end();
+    });
+});
+
+// ===== RUTAS PROTEGIDAS =====
+
 app.post('/api/partidos/:id/resultado', verificarToken, async (req, res) => {
     const { id } = req.params;
     const { goles1, goles2 } = req.body;
@@ -464,13 +505,11 @@ app.post('/api/reiniciar', verificarToken, async (req, res) => {
     }
 });
 
-// ===== RUTA PARA CUALQUIER OTRA URL (SIEMPRE DEVOLVER index.html) =====
+// ===== RUTA PARA CUALQUIER OTRA URL =====
 app.get('*', (req, res) => {
-    // Si es una ruta de API, devolver 404
     if (req.path.startsWith('/api')) {
         return res.status(404).json({ error: 'API endpoint no encontrado' });
     }
-    // Si no, devolver index.html
     res.sendFile(__dirname + '/index.html');
 });
 

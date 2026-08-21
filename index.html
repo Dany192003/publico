@@ -300,7 +300,7 @@
             <span class="status" :class="conectado ? 'online' : 'offline'">
                 {{ conectado ? '✅ Conectado' : '❌ Desconectado' }}
             </span>
-           
+            <a href="/admin.html" class="btn-admin">🔐 Panel de Control</a>
         </div>
     </header>
 
@@ -420,7 +420,7 @@
             <span class="punto"></span>
             Última actualización: {{ ultimaActualizacion }}
             <span style="margin-left:15px;font-size:0.7rem;color:#8ecae6;">
-                Auto-refresh cada 60s
+                🔄 Actualización en tiempo real con cambios
             </span>
         </div>
     </div>
@@ -437,7 +437,7 @@ createApp({
             error: null,
             conectado: false,
             ultimaActualizacion: '-',
-            intervalo: null
+            eventSource: null
         };
     },
     computed: {
@@ -491,16 +491,40 @@ createApp({
             return this.datos.partidos
                 .filter(p => p.grupo === nombreGrupo && p.jugado === false)
                 .sort((a, b) => a.id - b.id);
+        },
+        conectarRealtime() {
+            if (this.eventSource) {
+                this.eventSource.close();
+            }
+            
+            this.eventSource = new EventSource('/api/events');
+            
+            this.eventSource.onmessage = (event) => {
+                console.log('📡 Cambio detectado:', event.data);
+                this.cargarDatos();
+            };
+            
+            this.eventSource.onerror = (error) => {
+                console.error('❌ Error en EventSource:', error);
+                setTimeout(() => {
+                    if (this.eventSource) {
+                        this.eventSource.close();
+                        this.eventSource = null;
+                        this.conectarRealtime();
+                    }
+                }, 5000);
+            };
         }
     },
     mounted() {
         this.cargarDatos();
-        this.intervalo = setInterval(() => {
-            if (!this.cargando) this.cargarDatos();
-        }, 180000);
+        this.conectarRealtime();
     },
     beforeUnmount() {
-        if (this.intervalo) clearInterval(this.intervalo);
+        if (this.eventSource) {
+            this.eventSource.close();
+            this.eventSource = null;
+        }
     }
 }).mount('#app');
 </script>

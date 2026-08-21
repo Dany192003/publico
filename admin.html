@@ -150,7 +150,6 @@
         }
         .btn-danger:hover { transform: scale(1.05); box-shadow: 0 5px 20px rgba(230,57,70,0.4); }
 
-        /* ===== TABLAS DE GRUPOS ===== */
         .grupos-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -196,7 +195,6 @@
         .badge-clasificado { font-size: 0.55rem; background: #00b4d8; padding: 2px 8px; border-radius: 10px; color: #fff; font-weight: 600; }
         .badge-eliminado { font-size: 0.55rem; background: #e63946; padding: 2px 8px; border-radius: 10px; color: #fff; font-weight: 600; }
 
-        /* ===== PARTIDOS ===== */
         .partidos-por-grupo {
             display: flex;
             flex-direction: column;
@@ -424,7 +422,6 @@
         <div v-if="cargando" class="loading"><p>⏳ Cargando datos...</p></div>
 
         <div v-else-if="datos">
-            <!-- STATS -->
             <div class="stats-grid">
                 <div class="stat-card"><div class="stat-number">{{ datos.juveniles?.length || 0 }}</div><div class="stat-label">👥 Juveniles</div></div>
                 <div class="stat-card"><div class="stat-number">{{ datos.equipos?.length || 0 }}</div><div class="stat-label">🏆 Equipos</div></div>
@@ -437,7 +434,6 @@
                 </div>
             </div>
 
-            <!-- FASE DE GRUPOS - TABLAS DE POSICIONES -->
             <div class="section-title">
                 <span>📋 Fase de Grupos</span>
             </div>
@@ -470,7 +466,6 @@
                 </div>
             </div>
 
-            <!-- GESTIONAR PARTIDOS -->
             <div class="section-title">
                 <span>📝 Gestionar Partidos</span>
                 <button class="btn-danger" @click="reiniciarResultados">🔄 Reiniciar Todos</button>
@@ -480,7 +475,7 @@
                 <div v-for="grupo in datos.grupos" :key="grupo.nombre" class="grupo-partidos">
                     <h4>{{ grupo.nombre }}</h4>
                     <div class="partidos-admin">
-                        <!-- PRIMERO: Partidos finalizados (no en edición) -->
+                        <!-- Partidos finalizados -->
                         <div v-for="partido in getPartidosFinalizadosNoEditando(grupo.nombre)" 
                              :key="partido.id" 
                              class="partido-admin finalizado">
@@ -544,7 +539,7 @@
                             <span>━━━ Partidos Pendientes ━━━</span>
                         </div>
 
-                        <!-- DESPUÉS: Partidos pendientes -->
+                        <!-- Partidos pendientes -->
                         <div v-for="partido in getPartidosPendientes(grupo.nombre)" 
                              :key="partido.id" 
                              class="partido-admin" 
@@ -581,7 +576,9 @@
             <div class="admin-footer">
                 <span class="punto"></span>
                 Última actualización: {{ ultimaActualizacion }}
-                <span style="margin-left:15px;">Auto-refresh cada 60s</span>
+                <span style="margin-left:15px;">
+                    🔄 Actualización en tiempo real con cambios
+                </span>
             </div>
         </div>
     </div>
@@ -603,7 +600,7 @@ createApp({
             cargando: false,
             conectado: false,
             ultimaActualizacion: '-',
-            intervalo: null,
+            eventSource: null,
             partidosEditando: []
         };
     },
@@ -652,6 +649,10 @@ createApp({
             localStorage.removeItem('admin_token');
             this.password = '';
             this.partidosEditando = [];
+            if (this.eventSource) {
+                this.eventSource.close();
+                this.eventSource = null;
+            }
             this.mostrarToast('Sesión cerrada', 'info');
         },
         async cargarDatos() {
@@ -711,6 +712,33 @@ createApp({
             return this.datos.partidos
                 .filter(p => p.grupo === nombreGrupo && p.jugado === false && !this.partidosEditando.includes(p.id))
                 .sort((a, b) => a.id - b.id);
+        },
+        conectarRealtime() {
+            if (this.eventSource) {
+                this.eventSource.close();
+            }
+            
+            this.eventSource = new EventSource('/api/events');
+            
+            this.eventSource.onmessage = (event) => {
+                console.log('📡 Cambio detectado en admin:', event.data);
+                if (this.autenticado && !this.cargando) {
+                    this.cargarDatos();
+                }
+            };
+            
+            this.eventSource.onerror = (error) => {
+                console.error('❌ Error en EventSource admin:', error);
+                setTimeout(() => {
+                    if (this.eventSource) {
+                        this.eventSource.close();
+                        this.eventSource = null;
+                        if (this.autenticado) {
+                            this.conectarRealtime();
+                        }
+                    }
+                }, 5000);
+            };
         },
         async registrarResultado(partido) {
             if (partido.goles1_temp === undefined || partido.goles2_temp === undefined) {
@@ -877,15 +905,14 @@ createApp({
             this.token = savedToken;
             this.autenticado = true;
             this.cargarDatos();
+            this.conectarRealtime();
         }
-        this.intervalo = setInterval(() => {
-            if (this.autenticado && !this.cargando) {
-                this.cargarDatos();
-            }
-        }, 180000); // 3 minutos
     },
     beforeUnmount() {
-        if (this.intervalo) clearInterval(this.intervalo);
+        if (this.eventSource) {
+            this.eventSource.close();
+            this.eventSource = null;
+        }
     }
 }).mount('#app');
 </script>
