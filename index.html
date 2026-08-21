@@ -300,7 +300,7 @@
             <span class="status" :class="conectado ? 'online' : 'offline'">
                 {{ conectado ? '✅ Conectado' : '❌ Desconectado' }}
             </span>
-            <a href="/admin.html" class="btn-admin">🔐 Panel de Control</a>
+           
         </div>
     </header>
 
@@ -497,7 +497,7 @@ createApp({
         this.cargarDatos();
         this.intervalo = setInterval(() => {
             if (!this.cargando) this.cargarDatos();
-        }, 60000);
+        }, 180000);
     },
     beforeUnmount() {
         if (this.intervalo) clearInterval(this.intervalo);
