@@ -7,6 +7,7 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <style>
+        /* ... (todos los estilos existentes) ... */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -624,7 +625,10 @@ createApp({
             try {
                 const response = await fetch('/api/login', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
                     body: JSON.stringify({ password: this.password })
                 });
                 const data = await response.json();
@@ -633,14 +637,17 @@ createApp({
                     this.autenticado = true;
                     this.errorLogin = '';
                     localStorage.setItem('admin_token', data.token);
+                    // Verificar que el token se guardó
+                    console.log('✅ Token guardado:', data.token.substring(0, 20) + '...');
                     await this.cargarDatos();
+                    this.conectarRealtime();
                     this.mostrarToast('✅ Sesión iniciada correctamente', 'success');
                 } else {
                     this.errorLogin = '❌ Contraseña incorrecta';
                 }
             } catch (error) {
-                this.errorLogin = '❌ Error de conexión';
-                console.error(error);
+                console.error('Error en login:', error);
+                this.errorLogin = '❌ Error de conexión: ' + error.message;
             }
         },
         cerrarSesion() {
@@ -656,18 +663,35 @@ createApp({
             this.mostrarToast('Sesión cerrada', 'info');
         },
         async cargarDatos() {
-            if (!this.token) return;
+            // Obtener token desde localStorage si no está en memoria
+            if (!this.token) {
+                const savedToken = localStorage.getItem('admin_token');
+                if (savedToken) {
+                    this.token = savedToken;
+                    this.autenticado = true;
+                } else {
+                    this.cerrarSesion();
+                    return;
+                }
+            }
+            
             this.cargando = true;
             try {
+                console.log('📤 Cargando datos con token:', this.token.substring(0, 20) + '...');
                 const response = await fetch('/api/torneo', {
-                    headers: { 'Authorization': `Bearer ${this.token}` }
+                    headers: { 
+                        'Authorization': `Bearer ${this.token}`,
+                        'Accept': 'application/json'
+                    }
                 });
+                
                 if (!response.ok) {
                     if (response.status === 401) {
+                        this.mostrarToast('❌ Sesión expirada. Inicia sesión nuevamente.', 'error');
                         this.cerrarSesion();
                         return;
                     }
-                    throw new Error('Error al cargar datos');
+                    throw new Error(`Error ${response.status}: ${response.statusText}`);
                 }
                 const data = await response.json();
                 data.partidos.forEach(p => {
@@ -677,10 +701,11 @@ createApp({
                 this.datos = data;
                 this.conectado = true;
                 this.ultimaActualizacion = new Date().toLocaleString();
+                console.log('✅ Datos cargados correctamente');
             } catch (error) {
-                console.error('Error:', error);
+                console.error('❌ Error cargando datos:', error);
                 this.conectado = false;
-                this.mostrarToast('❌ Error al cargar datos', 'error');
+                this.mostrarToast('❌ Error al cargar datos: ' + error.message, 'error');
             } finally {
                 this.cargando = false;
             }
@@ -746,38 +771,72 @@ createApp({
                 return;
             }
 
+            // Verificar token antes de enviar
+            if (!this.token) {
+                const savedToken = localStorage.getItem('admin_token');
+                if (savedToken) {
+                    this.token = savedToken;
+                } else {
+                    this.mostrarToast('❌ Sesión expirada. Inicia sesión nuevamente.', 'error');
+                    this.cerrarSesion();
+                    return;
+                }
+            }
+
             try {
+                console.log('📤 Enviando resultado con token:', this.token.substring(0, 20) + '...');
                 const response = await fetch(`/api/partidos/${partido.id}/resultado`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${this.token}`
+                        'Authorization': `Bearer ${this.token}`,
+                        'Accept': 'application/json'
                     },
                     body: JSON.stringify({
                         goles1: partido.goles1_temp,
                         goles2: partido.goles2_temp
                     })
                 });
+
+                if (response.status === 401) {
+                    this.mostrarToast('❌ Sesión expirada. Inicia sesión nuevamente.', 'error');
+                    this.cerrarSesion();
+                    return;
+                }
+
                 const data = await response.json();
                 if (data.success) {
                     this.mostrarToast(`✅ ${partido.equipo1} ${partido.goles1_temp} - ${partido.goles2_temp} ${partido.equipo2}`, 'success');
                     await this.cargarDatos();
                 } else {
-                    this.mostrarToast('❌ Error al registrar resultado', 'error');
+                    this.mostrarToast('❌ ' + (data.error || 'Error al registrar resultado'), 'error');
                 }
             } catch (error) {
-                console.error('Error:', error);
-                this.mostrarToast('❌ Error de conexión', 'error');
+                console.error('❌ Error en registrarResultado:', error);
+                this.mostrarToast('❌ Error de conexión: ' + error.message, 'error');
             }
         },
         async toggleEnVivo(partido) {
             const nuevoEstado = !partido.en_vivo;
             try {
+                // Verificar token
+                if (!this.token) {
+                    const savedToken = localStorage.getItem('admin_token');
+                    if (savedToken) {
+                        this.token = savedToken;
+                    } else {
+                        this.mostrarToast('❌ Sesión expirada', 'error');
+                        this.cerrarSesion();
+                        return;
+                    }
+                }
+
                 const response = await fetch(`/api/partidos/${partido.id}/en_vivo`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${this.token}`
+                        'Authorization': `Bearer ${this.token}`,
+                        'Accept': 'application/json'
                     },
                     body: JSON.stringify({ en_vivo: nuevoEstado })
                 });
@@ -806,10 +865,23 @@ createApp({
             }
 
             try {
+                // Verificar token
+                if (!this.token) {
+                    const savedToken = localStorage.getItem('admin_token');
+                    if (savedToken) {
+                        this.token = savedToken;
+                    } else {
+                        this.mostrarToast('❌ Sesión expirada', 'error');
+                        this.cerrarSesion();
+                        return;
+                    }
+                }
+
                 const deleteResponse = await fetch(`/api/partidos/${partido.id}/resultado`, {
                     method: 'DELETE',
                     headers: {
-                        'Authorization': `Bearer ${this.token}`
+                        'Authorization': `Bearer ${this.token}`,
+                        'Accept': 'application/json'
                     }
                 });
                 
@@ -821,7 +893,8 @@ createApp({
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${this.token}`
+                        'Authorization': `Bearer ${this.token}`,
+                        'Accept': 'application/json'
                     },
                     body: JSON.stringify({
                         goles1: partido.goles1_temp,
@@ -839,7 +912,7 @@ createApp({
                 }
             } catch (error) {
                 console.error('Error:', error);
-                this.mostrarToast('❌ Error de conexión', 'error');
+                this.mostrarToast('❌ Error de conexión: ' + error.message, 'error');
             }
         },
         cancelarEdicion(partido) {
@@ -849,10 +922,23 @@ createApp({
         async eliminarResultado(partido) {
             if (!confirm(`¿Eliminar el resultado de ${partido.equipo1} vs ${partido.equipo2}?`)) return;
             try {
+                // Verificar token
+                if (!this.token) {
+                    const savedToken = localStorage.getItem('admin_token');
+                    if (savedToken) {
+                        this.token = savedToken;
+                    } else {
+                        this.mostrarToast('❌ Sesión expirada', 'error');
+                        this.cerrarSesion();
+                        return;
+                    }
+                }
+
                 const response = await fetch(`/api/partidos/${partido.id}/resultado`, {
                     method: 'DELETE',
                     headers: {
-                        'Authorization': `Bearer ${this.token}`
+                        'Authorization': `Bearer ${this.token}`,
+                        'Accept': 'application/json'
                     }
                 });
                 const data = await response.json();
@@ -870,9 +956,24 @@ createApp({
                 return;
             }
             try {
+                // Verificar token
+                if (!this.token) {
+                    const savedToken = localStorage.getItem('admin_token');
+                    if (savedToken) {
+                        this.token = savedToken;
+                    } else {
+                        this.mostrarToast('❌ Sesión expirada', 'error');
+                        this.cerrarSesion();
+                        return;
+                    }
+                }
+
                 const response = await fetch('/api/reiniciar', {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${this.token}` }
+                    headers: { 
+                        'Authorization': `Bearer ${this.token}`,
+                        'Accept': 'application/json'
+                    }
                 });
                 const data = await response.json();
                 if (data.success) {
@@ -900,12 +1001,18 @@ createApp({
         }
     },
     mounted() {
+        // Verificar token guardado al cargar
         const savedToken = localStorage.getItem('admin_token');
         if (savedToken) {
             this.token = savedToken;
             this.autenticado = true;
+            console.log('🔑 Token recuperado de localStorage:', savedToken.substring(0, 20) + '...');
             this.cargarDatos();
             this.conectarRealtime();
+        } else {
+            this.autenticado = false;
+            this.token = '';
+            console.log('🔑 No hay token guardado');
         }
     },
     beforeUnmount() {
