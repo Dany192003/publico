@@ -7,7 +7,6 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <style>
-        /* ... (todos los estilos existentes) ... */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -637,7 +636,6 @@ createApp({
                     this.autenticado = true;
                     this.errorLogin = '';
                     localStorage.setItem('admin_token', data.token);
-                    // Verificar que el token se guardó
                     console.log('✅ Token guardado:', data.token.substring(0, 20) + '...');
                     await this.cargarDatos();
                     this.conectarRealtime();
@@ -663,7 +661,6 @@ createApp({
             this.mostrarToast('Sesión cerrada', 'info');
         },
         async cargarDatos() {
-            // Obtener token desde localStorage si no está en memoria
             if (!this.token) {
                 const savedToken = localStorage.getItem('admin_token');
                 if (savedToken) {
@@ -743,27 +740,39 @@ createApp({
                 this.eventSource.close();
             }
             
-            this.eventSource = new EventSource('/api/events');
-            
-            this.eventSource.onmessage = (event) => {
-                console.log('📡 Cambio detectado en admin:', event.data);
-                if (this.autenticado && !this.cargando) {
-                    this.cargarDatos();
-                }
-            };
-            
-            this.eventSource.onerror = (error) => {
-                console.error('❌ Error en EventSource admin:', error);
-                setTimeout(() => {
-                    if (this.eventSource) {
-                        this.eventSource.close();
-                        this.eventSource = null;
-                        if (this.autenticado) {
-                            this.conectarRealtime();
+            try {
+                this.eventSource = new EventSource('/api/events');
+                
+                this.eventSource.onopen = () => {
+                    console.log('📡 Conexión SSE establecida en admin');
+                };
+                
+                this.eventSource.onmessage = (event) => {
+                    try {
+                        console.log('📡 Cambio detectado en admin:', event.data);
+                        if (this.autenticado && !this.cargando) {
+                            this.cargarDatos();
                         }
+                    } catch (error) {
+                        console.error('❌ Error procesando mensaje SSE:', error);
                     }
-                }, 5000);
-            };
+                };
+                
+                this.eventSource.onerror = (error) => {
+                    console.error('❌ Error en EventSource admin:', error);
+                    setTimeout(() => {
+                        if (this.eventSource) {
+                            this.eventSource.close();
+                            this.eventSource = null;
+                            if (this.autenticado) {
+                                this.conectarRealtime();
+                            }
+                        }
+                    }, 5000);
+                };
+            } catch (error) {
+                console.error('❌ Error creando EventSource:', error);
+            }
         },
         async registrarResultado(partido) {
             if (partido.goles1_temp === undefined || partido.goles2_temp === undefined) {
@@ -771,7 +780,6 @@ createApp({
                 return;
             }
 
-            // Verificar token antes de enviar
             if (!this.token) {
                 const savedToken = localStorage.getItem('admin_token');
                 if (savedToken) {
@@ -784,7 +792,9 @@ createApp({
             }
 
             try {
-                console.log('📤 Enviando resultado con token:', this.token.substring(0, 20) + '...');
+                console.log('📤 Enviando resultado para partido:', partido.id);
+                console.log('📤 Goles:', partido.goles1_temp, '-', partido.goles2_temp);
+
                 const response = await fetch(`/api/partidos/${partido.id}/resultado`, {
                     method: 'POST',
                     headers: {
@@ -798,6 +808,8 @@ createApp({
                     })
                 });
 
+                console.log('📥 Respuesta status:', response.status);
+
                 if (response.status === 401) {
                     this.mostrarToast('❌ Sesión expirada. Inicia sesión nuevamente.', 'error');
                     this.cerrarSesion();
@@ -805,9 +817,20 @@ createApp({
                 }
 
                 const data = await response.json();
+                console.log('📥 Respuesta data:', data);
+
                 if (data.success) {
-                    this.mostrarToast(`✅ ${partido.equipo1} ${partido.goles1_temp} - ${partido.goles2_temp} ${partido.equipo2}`, 'success');
+                    this.mostrarToast(`✅ Resultado guardado: ${partido.equipo1} ${partido.goles1_temp} - ${partido.goles2_temp} ${partido.equipo2}`, 'success');
+                    
+                    // Actualizar localmente
+                    partido.goles1 = partido.goles1_temp;
+                    partido.goles2 = partido.goles2_temp;
+                    partido.jugado = true;
+                    partido.en_vivo = false;
+                    partido.ganador = data.partido?.ganador || (partido.goles1_temp > partido.goles2_temp ? partido.equipo1 : (partido.goles1_temp < partido.goles2_temp ? partido.equipo2 : 'Empate'));
+                    
                     await this.cargarDatos();
+                    this.$forceUpdate();
                 } else {
                     this.mostrarToast('❌ ' + (data.error || 'Error al registrar resultado'), 'error');
                 }
@@ -819,7 +842,6 @@ createApp({
         async toggleEnVivo(partido) {
             const nuevoEstado = !partido.en_vivo;
             try {
-                // Verificar token
                 if (!this.token) {
                     const savedToken = localStorage.getItem('admin_token');
                     if (savedToken) {
@@ -865,7 +887,6 @@ createApp({
             }
 
             try {
-                // Verificar token
                 if (!this.token) {
                     const savedToken = localStorage.getItem('admin_token');
                     if (savedToken) {
@@ -922,7 +943,6 @@ createApp({
         async eliminarResultado(partido) {
             if (!confirm(`¿Eliminar el resultado de ${partido.equipo1} vs ${partido.equipo2}?`)) return;
             try {
-                // Verificar token
                 if (!this.token) {
                     const savedToken = localStorage.getItem('admin_token');
                     if (savedToken) {
@@ -956,7 +976,6 @@ createApp({
                 return;
             }
             try {
-                // Verificar token
                 if (!this.token) {
                     const savedToken = localStorage.getItem('admin_token');
                     if (savedToken) {
@@ -1001,7 +1020,6 @@ createApp({
         }
     },
     mounted() {
-        // Verificar token guardado al cargar
         const savedToken = localStorage.getItem('admin_token');
         if (savedToken) {
             this.token = savedToken;

@@ -300,7 +300,7 @@
             <span class="status" :class="conectado ? 'online' : 'offline'">
                 {{ conectado ? '✅ Conectado' : '❌ Desconectado' }}
             </span>
-        
+            <a href="/admin.html" class="btn-admin">🔐 Panel de Control</a>
         </div>
     </header>
 
@@ -497,23 +497,35 @@ createApp({
                 this.eventSource.close();
             }
             
-            this.eventSource = new EventSource('/api/events');
-            
-            this.eventSource.onmessage = (event) => {
-                console.log('📡 Cambio detectado:', event.data);
-                this.cargarDatos();
-            };
-            
-            this.eventSource.onerror = (error) => {
-                console.error('❌ Error en EventSource:', error);
-                setTimeout(() => {
-                    if (this.eventSource) {
-                        this.eventSource.close();
-                        this.eventSource = null;
-                        this.conectarRealtime();
+            try {
+                this.eventSource = new EventSource('/api/events');
+                
+                this.eventSource.onopen = () => {
+                    console.log('📡 Conexión SSE establecida');
+                };
+                
+                this.eventSource.onmessage = (event) => {
+                    try {
+                        console.log('📡 Cambio detectado:', event.data);
+                        this.cargarDatos();
+                    } catch (error) {
+                        console.error('❌ Error procesando mensaje SSE:', error);
                     }
-                }, 5000);
-            };
+                };
+                
+                this.eventSource.onerror = (error) => {
+                    console.error('❌ Error en EventSource:', error);
+                    setTimeout(() => {
+                        if (this.eventSource) {
+                            this.eventSource.close();
+                            this.eventSource = null;
+                            this.conectarRealtime();
+                        }
+                    }, 5000);
+                };
+            } catch (error) {
+                console.error('❌ Error creando EventSource:', error);
+            }
         }
     },
     mounted() {

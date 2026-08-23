@@ -280,11 +280,9 @@ app.get('/api/torneo', async (req, res) => {
     }
 });
 
-// ===== EVENTOS EN TIEMPO REAL (SSE) - CORREGIDO =====
-// Lista de clientes conectados para SSE
+// ===== EVENTOS EN TIEMPO REAL (SSE) =====
 const sseClients = [];
 
-// Función para notificar cambios a todos los clientes
 function notificarCambios(tabla, evento, data = null) {
     const message = JSON.stringify({ table, event: evento, data });
     console.log(`📡 Notificando ${sseClients.length} clientes: ${tabla} - ${evento}`);
@@ -293,7 +291,6 @@ function notificarCambios(tabla, evento, data = null) {
             client.res.write(`data: ${message}\n\n`);
         } catch (error) {
             console.error('❌ Error notificando cliente:', error);
-            // Eliminar cliente defectuoso
             const index = sseClients.indexOf(client);
             if (index !== -1) {
                 sseClients.splice(index, 1);
@@ -308,21 +305,17 @@ app.get('/api/events', (req, res) => {
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('Access-Control-Allow-Origin', '*');
 
-    // Agregar cliente a la lista
     const clientId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
     const client = { id: clientId, res };
     sseClients.push(client);
     console.log(`📡 Cliente ${clientId} conectado (Total: ${sseClients.length})`);
 
-    // Enviar mensaje de conexión
     res.write(`data: ${JSON.stringify({ event: 'connected', clientId })}\n\n`);
 
-    // Mantener la conexión abierta
     const keepAlive = setInterval(() => {
         res.write(': keep-alive\n\n');
     }, 30000);
 
-    // Eliminar cliente cuando se cierra la conexión
     req.on('close', () => {
         clearInterval(keepAlive);
         const index = sseClients.findIndex(c => c.id === clientId);
@@ -334,7 +327,7 @@ app.get('/api/events', (req, res) => {
     });
 });
 
-// ===== RUTAS PROTEGIDAS CON NOTIFICACIONES =====
+// ===== RUTAS PROTEGIDAS =====
 
 app.post('/api/partidos/:id/resultado', verificarToken, async (req, res) => {
     const { id } = req.params;
@@ -376,7 +369,7 @@ app.post('/api/partidos/:id/resultado', verificarToken, async (req, res) => {
             ganador = 'Empate';
         }
 
-        await supabase
+        const { error: updateError } = await supabase
             .from('partidos')
             .update({
                 goles1,
@@ -387,11 +380,15 @@ app.post('/api/partidos/:id/resultado', verificarToken, async (req, res) => {
             })
             .eq('id', id);
 
+        if (updateError) {
+            console.error('❌ Error actualizando partido:', updateError);
+            return res.status(500).json({ error: updateError.message });
+        }
+
         console.log(`   ✅ Partido ${id} actualizado`);
 
         await calcularEstadisticas(partido.torneo_id);
 
-        // NOTIFICAR CAMBIOS
         notificarCambios('partidos', 'UPDATE', { partidoId: id });
         notificarCambios('equipos', 'UPDATE');
 
@@ -437,7 +434,6 @@ app.post('/api/partidos/:id/en_vivo', verificarToken, async (req, res) => {
             .update({ en_vivo })
             .eq('id', id);
 
-        // NOTIFICAR CAMBIOS
         notificarCambios('partidos', 'UPDATE', { partidoId: id });
 
         res.json({ success: true, message: `Partido ${en_vivo ? 'en vivo' : 'finalizado'}` });
@@ -473,7 +469,6 @@ app.delete('/api/partidos/:id/resultado', verificarToken, async (req, res) => {
 
         await calcularEstadisticas(partido.torneo_id);
 
-        // NOTIFICAR CAMBIOS
         notificarCambios('partidos', 'UPDATE', { partidoId: id });
         notificarCambios('equipos', 'UPDATE');
 
@@ -524,7 +519,6 @@ app.post('/api/reiniciar', verificarToken, async (req, res) => {
         }
         console.log('   ✅ Estadísticas de equipos reiniciadas');
 
-        // NOTIFICAR CAMBIOS
         notificarCambios('partidos', 'REINICIAR');
         notificarCambios('equipos', 'REINICIAR');
 
