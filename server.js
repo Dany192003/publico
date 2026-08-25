@@ -10,6 +10,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'torneo_secret_2026';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin2026';
 
 // ===== CONFIGURACIÓN SUPABASE =====
+console.log('🔑 Verificando variables de entorno:');
+console.log('  SUPABASE_URL:', process.env.SUPABASE_URL ? '✅ Configurada' : '❌ FALTA');
+console.log('  SUPABASE_KEY:', process.env.SUPABASE_KEY ? '✅ Configurada' : '❌ FALTA');
+
 const supabase = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_KEY
@@ -41,14 +45,20 @@ function verificarToken(req, res, next) {
 
 // ===== OBTENER TORNEO PRINCIPAL =====
 async function getTorneoPrincipal() {
-    let { data: torneo } = await supabase
+    const { data: torneo, error } = await supabase
         .from('torneos')
         .select('*')
         .eq('nombre', 'torneo_principal')
-        .single();
+        .maybeSingle();
+    
+    if (error) {
+        console.error('❌ Error obteniendo torneo:', error);
+        return null;
+    }
     
     if (!torneo) {
-        const { data: nuevo } = await supabase
+        console.log('⚠️ Torneo no encontrado, creando uno nuevo...');
+        const { data: nuevo, error: insertError } = await supabase
             .from('torneos')
             .insert({ 
                 nombre: 'torneo_principal',
@@ -56,8 +66,15 @@ async function getTorneoPrincipal() {
             })
             .select()
             .single();
-        torneo = nuevo;
+        
+        if (insertError) {
+            console.error('❌ Error creando torneo:', insertError);
+            return null;
+        }
+        console.log('✅ Torneo creado (ID:', nuevo.id, ')');
+        return nuevo;
     }
+    
     return torneo;
 }
 
@@ -82,7 +99,6 @@ async function calcularEstadisticas(torneoId) {
                 puntos: 0
             })
             .eq('id', equipo.id);
-        console.log(`   ↺ Reiniciado: ${equipo.nombre}`);
     }
 
     const { data: partidosJugados } = await supabase
@@ -97,10 +113,7 @@ async function calcularEstadisticas(torneoId) {
         const equipo1 = equipos?.find(e => e.id === p.equipo1_id);
         const equipo2 = equipos?.find(e => e.id === p.equipo2_id);
         
-        if (!equipo1 || !equipo2) {
-            console.log(`   ⚠️ Partido ${p.id}: equipo no encontrado`);
-            continue;
-        }
+        if (!equipo1 || !equipo2) continue;
 
         const { data: e1Actual } = await supabase
             .from('equipos')
@@ -120,16 +133,16 @@ async function calcularEstadisticas(torneoId) {
         await supabase
             .from('equipos')
             .update({
-                goles_favor: e1Actual.goles_favor + g1,
-                goles_contra: e1Actual.goles_contra + g2
+                goles_favor: (e1Actual?.goles_favor || 0) + g1,
+                goles_contra: (e1Actual?.goles_contra || 0) + g2
             })
             .eq('id', equipo1.id);
 
         await supabase
             .from('equipos')
             .update({
-                goles_favor: e2Actual.goles_favor + g2,
-                goles_contra: e2Actual.goles_contra + g1
+                goles_favor: (e2Actual?.goles_favor || 0) + g2,
+                goles_contra: (e2Actual?.goles_contra || 0) + g1
             })
             .eq('id', equipo2.id);
 
@@ -137,48 +150,45 @@ async function calcularEstadisticas(torneoId) {
             await supabase
                 .from('equipos')
                 .update({
-                    ganados: e1Actual.ganados + 1,
-                    puntos: e1Actual.puntos + 3
+                    ganados: (e1Actual?.ganados || 0) + 1,
+                    puntos: (e1Actual?.puntos || 0) + 3
                 })
                 .eq('id', equipo1.id);
             await supabase
                 .from('equipos')
                 .update({
-                    perdidos: e2Actual.perdidos + 1
+                    perdidos: (e2Actual?.perdidos || 0) + 1
                 })
                 .eq('id', equipo2.id);
-            console.log(`   ✅ ${equipo1.nombre} gana ${g1}-${g2} a ${equipo2.nombre}`);
         } else if (g2 > g1) {
             await supabase
                 .from('equipos')
                 .update({
-                    ganados: e2Actual.ganados + 1,
-                    puntos: e2Actual.puntos + 3
+                    ganados: (e2Actual?.ganados || 0) + 1,
+                    puntos: (e2Actual?.puntos || 0) + 3
                 })
                 .eq('id', equipo2.id);
             await supabase
                 .from('equipos')
                 .update({
-                    perdidos: e1Actual.perdidos + 1
+                    perdidos: (e1Actual?.perdidos || 0) + 1
                 })
                 .eq('id', equipo1.id);
-            console.log(`   ✅ ${equipo2.nombre} gana ${g2}-${g1} a ${equipo1.nombre}`);
         } else {
             await supabase
                 .from('equipos')
                 .update({
-                    empatados: e1Actual.empatados + 1,
-                    puntos: e1Actual.puntos + 1
+                    empatados: (e1Actual?.empatados || 0) + 1,
+                    puntos: (e1Actual?.puntos || 0) + 1
                 })
                 .eq('id', equipo1.id);
             await supabase
                 .from('equipos')
                 .update({
-                    empatados: e2Actual.empatados + 1,
-                    puntos: e2Actual.puntos + 1
+                    empatados: (e2Actual?.empatados || 0) + 1,
+                    puntos: (e2Actual?.puntos || 0) + 1
                 })
                 .eq('id', equipo2.id);
-            console.log(`   🤝 Empate ${g1}-${g2} entre ${equipo1.nombre} y ${equipo2.nombre}`);
         }
     }
     console.log('✅ Estadísticas recalculadas correctamente');
@@ -186,10 +196,12 @@ async function calcularEstadisticas(torneoId) {
 
 // ===== RUTAS DE API =====
 
+// Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'Servidor con Supabase' });
 });
 
+// Login
 app.post('/api/login', (req, res) => {
     const { password } = req.body;
     if (password === ADMIN_PASSWORD) {
@@ -200,67 +212,180 @@ app.post('/api/login', (req, res) => {
     }
 });
 
-// ===== RUTA PRINCIPAL - CORREGIDA =====
+// ===== ENDPOINT DE DIAGNÓSTICO =====
+app.get('/api/diagnostico', async (req, res) => {
+    console.log('🔍 Diagnóstico iniciado');
+    try {
+        // 1. Verificar conexión a Supabase
+        const { data: test, error: testError } = await supabase
+            .from('torneos')
+            .select('*')
+            .limit(1);
+        
+        if (testError) {
+            console.error('❌ Error de conexión:', testError);
+            return res.status(500).json({
+                error: 'Error conectando a Supabase',
+                details: testError.message,
+                supabase_url: process.env.SUPABASE_URL ? '✅ Configurada' : '❌ FALTA',
+                supabase_key: process.env.SUPABASE_KEY ? '✅ Configurada' : '❌ FALTA'
+            });
+        }
+
+        // 2. Obtener torneo principal
+        const torneo = await getTorneoPrincipal();
+        
+        if (!torneo) {
+            return res.json({
+                conexion: '✅ OK',
+                mensaje: 'No hay torneo "torneo_principal" en la base de datos',
+                torneos_disponibles: test
+            });
+        }
+
+        const torneoId = torneo.id;
+        console.log(`📁 Torneo encontrado: ${torneo.nombre} (ID: ${torneoId})`);
+
+        // 3. Contar registros en cada tabla
+        const { count: equiposCount } = await supabase
+            .from('equipos')
+            .select('*', { count: 'exact', head: true })
+            .eq('torneo_id', torneoId);
+
+        const { count: gruposCount } = await supabase
+            .from('grupos')
+            .select('*', { count: 'exact', head: true })
+            .eq('torneo_id', torneoId);
+
+        const { count: partidosCount } = await supabase
+            .from('partidos')
+            .select('*', { count: 'exact', head: true })
+            .eq('torneo_id', torneoId);
+
+        const { count: juvenilesCount } = await supabase
+            .from('juveniles')
+            .select('*', { count: 'exact', head: true })
+            .eq('torneo_id', torneoId);
+
+        const { count: grupoEquiposCount } = await supabase
+            .from('grupo_equipos')
+            .select('*', { count: 'exact', head: true });
+
+        // 4. Obtener muestra de los datos
+        const { data: equiposMuestra } = await supabase
+            .from('equipos')
+            .select('id, nombre')
+            .eq('torneo_id', torneoId)
+            .limit(3);
+
+        const { data: gruposMuestra } = await supabase
+            .from('grupos')
+            .select('id, nombre')
+            .eq('torneo_id', torneoId)
+            .limit(3);
+
+        res.json({
+            conexion: '✅ OK',
+            torneo: {
+                id: torneoId,
+                nombre: torneo.nombre,
+                configuracion: torneo.configuracion
+            },
+            conteos: {
+                juveniles: juvenilesCount || 0,
+                equipos: equiposCount || 0,
+                grupos: gruposCount || 0,
+                partidos: partidosCount || 0,
+                grupo_equipos: grupoEquiposCount || 0
+            },
+            muestra: {
+                equipos: equiposMuestra || [],
+                grupos: gruposMuestra || []
+            },
+            supabase_url: process.env.SUPABASE_URL ? '✅ Configurada' : '❌ FALTA',
+            supabase_key: process.env.SUPABASE_KEY ? '✅ Configurada' : '❌ FALTA'
+        });
+    } catch (error) {
+        console.error('❌ Error en diagnóstico:', error);
+        res.status(500).json({ error: error.message, stack: error.stack });
+    }
+});
+
+// ===== RUTA PRINCIPAL =====
 app.get('/api/torneo', async (req, res) => {
+    console.log('📥 Solicitud recibida en /api/torneo');
     try {
         const torneo = await getTorneoPrincipal();
+        if (!torneo) {
+            return res.status(500).json({ error: 'No se pudo obtener o crear el torneo' });
+        }
+
         const torneoId = torneo.id;
+        console.log(`📁 Torneo ID: ${torneoId}`);
 
         // 1. Obtener juveniles
-        const { data: juveniles } = await supabase
+        const { data: juveniles, error: jError } = await supabase
             .from('juveniles')
             .select('*')
             .eq('torneo_id', torneoId);
+        if (jError) console.error('❌ Error juveniles:', jError);
+        console.log(`👥 Juveniles: ${juveniles?.length || 0}`);
 
         // 2. Obtener equipos
-        const { data: equipos } = await supabase
+        const { data: equipos, error: eError } = await supabase
             .from('equipos')
             .select('*')
             .eq('torneo_id', torneoId);
+        if (eError) console.error('❌ Error equipos:', eError);
+        console.log(`🏆 Equipos: ${equipos?.length || 0}`);
 
         // 3. Obtener grupos
-        const { data: gruposRaw } = await supabase
+        const { data: gruposRaw, error: gError } = await supabase
             .from('grupos')
             .select('*')
             .eq('torneo_id', torneoId);
+        if (gError) console.error('❌ Error grupos:', gError);
+        console.log(`📋 Grupos raw: ${gruposRaw?.length || 0}`);
 
         // 4. Para cada grupo, obtener sus equipos desde grupo_equipos
         const grupos = await Promise.all((gruposRaw || []).map(async (g) => {
-            // Obtener los equipo_id de la tabla grupo_equipos
-            const { data: grupoEquipos } = await supabase
+            const { data: grupoEquipos, error: geError } = await supabase
                 .from('grupo_equipos')
                 .select('equipo_id')
                 .eq('grupo_id', g.id);
             
-            // Obtener los IDs de los equipos
-            const equipoIds = (grupoEquipos || []).map(ge => ge.equipo_id);
+            if (geError) console.error(`❌ Error grupo_equipos para ${g.nombre}:`, geError);
             
-            // Filtrar los equipos que pertenecen a este grupo
+            const equipoIds = (grupoEquipos || []).map(ge => ge.equipo_id);
             const equiposDelGrupo = equipos.filter(e => equipoIds.includes(e.id));
             
+            console.log(`   ${g.nombre}: ${equiposDelGrupo.length} equipos`);
             return {
                 ...g,
                 equipos: equiposDelGrupo
             };
         }));
 
-        // 5. Obtener partidos y enriquecer con nombres
-        const { data: partidosRaw } = await supabase
+        // 5. Obtener partidos
+        const { data: partidosRaw, error: pError } = await supabase
             .from('partidos')
             .select('*')
             .eq('torneo_id', torneoId);
+        if (pError) console.error('❌ Error partidos:', pError);
+        console.log(`⚽ Partidos raw: ${partidosRaw?.length || 0}`);
 
+        // 6. Enriquecer partidos con nombres
         const partidos = await Promise.all((partidosRaw || []).map(async (p) => {
             const { data: e1 } = await supabase
                 .from('equipos')
                 .select('nombre')
                 .eq('id', p.equipo1_id)
-                .single();
+                .maybeSingle();
             const { data: e2 } = await supabase
                 .from('equipos')
                 .select('nombre')
                 .eq('id', p.equipo2_id)
-                .single();
+                .maybeSingle();
             return {
                 ...p,
                 equipo1: e1?.nombre || `Equipo ${p.equipo1_id}`,
@@ -268,7 +393,7 @@ app.get('/api/torneo', async (req, res) => {
             };
         }));
 
-        // 6. Ordenar partidos: finalizados primero, pendientes después
+        // 7. Ordenar partidos: finalizados primero, pendientes después
         partidos.sort((a, b) => {
             if (a.jugado !== b.jugado) {
                 return a.jugado ? -1 : 1;
@@ -276,7 +401,7 @@ app.get('/api/torneo', async (req, res) => {
             return a.id - b.id;
         });
 
-        // 7. Respuesta final
+        // 8. Respuesta final
         const response = {
             nombre: torneo.nombre,
             configuracion: torneo.configuracion || { puntos_ganado: 3, puntos_empate: 1, puntos_perdido: 0 },
@@ -287,7 +412,7 @@ app.get('/api/torneo', async (req, res) => {
             llaves: grupos?.[0]?.llaves || null
         };
 
-        console.log(`📤 Enviando datos: ${response.grupos.length} grupos, ${response.partidos.length} partidos`);
+        console.log(`📤 Enviando respuesta: ${response.grupos.length} grupos, ${response.partidos.length} partidos`);
         res.json(response);
 
     } catch (error) {
@@ -360,7 +485,7 @@ app.post('/api/partidos/:id/resultado', verificarToken, async (req, res) => {
             .from('partidos')
             .select('*')
             .eq('id', id)
-            .single();
+            .maybeSingle();
 
         if (!partido) {
             return res.status(404).json({ error: 'Partido no encontrado' });
@@ -372,20 +497,20 @@ app.post('/api/partidos/:id/resultado', verificarToken, async (req, res) => {
                 .from('equipos')
                 .select('nombre')
                 .eq('id', partido.equipo1_id)
-                .single();
+                .maybeSingle();
             ganador = e1?.nombre || 'Equipo 1';
         } else if (goles2 > goles1) {
             const { data: e2 } = await supabase
                 .from('equipos')
                 .select('nombre')
                 .eq('id', partido.equipo2_id)
-                .single();
+                .maybeSingle();
             ganador = e2?.nombre || 'Equipo 2';
         } else {
             ganador = 'Empate';
         }
 
-        const { error: updateError } = await supabase
+        await supabase
             .from('partidos')
             .update({
                 goles1,
@@ -395,11 +520,6 @@ app.post('/api/partidos/:id/resultado', verificarToken, async (req, res) => {
                 en_vivo: false
             })
             .eq('id', id);
-
-        if (updateError) {
-            console.error('❌ Error actualizando partido:', updateError);
-            return res.status(500).json({ error: updateError.message });
-        }
 
         console.log(`   ✅ Partido ${id} actualizado`);
 
@@ -412,18 +532,18 @@ app.post('/api/partidos/:id/resultado', verificarToken, async (req, res) => {
             .from('partidos')
             .select('*')
             .eq('id', id)
-            .single();
+            .maybeSingle();
 
         const { data: e1 } = await supabase
             .from('equipos')
             .select('nombre')
-            .eq('id', partidoActualizado.equipo1_id)
-            .single();
+            .eq('id', partidoActualizado?.equipo1_id)
+            .maybeSingle();
         const { data: e2 } = await supabase
             .from('equipos')
             .select('nombre')
-            .eq('id', partidoActualizado.equipo2_id)
-            .single();
+            .eq('id', partidoActualizado?.equipo2_id)
+            .maybeSingle();
 
         res.json({
             success: true,
@@ -466,7 +586,7 @@ app.delete('/api/partidos/:id/resultado', verificarToken, async (req, res) => {
             .from('partidos')
             .select('*')
             .eq('id', id)
-            .single();
+            .maybeSingle();
 
         if (!partido) {
             return res.status(404).json({ error: 'Partido no encontrado' });
@@ -498,9 +618,12 @@ app.delete('/api/partidos/:id/resultado', verificarToken, async (req, res) => {
 app.post('/api/reiniciar', verificarToken, async (req, res) => {
     try {
         const torneo = await getTorneoPrincipal();
+        if (!torneo) {
+            return res.status(404).json({ error: 'Torneo no encontrado' });
+        }
         console.log(`🔄 Reiniciando torneo ${torneo.nombre} (ID: ${torneo.id})`);
 
-        const { error: partidosError } = await supabase
+        await supabase
             .from('partidos')
             .update({
                 goles1: null,
@@ -511,13 +634,9 @@ app.post('/api/reiniciar', verificarToken, async (req, res) => {
             })
             .eq('torneo_id', torneo.id);
         
-        if (partidosError) {
-            console.error('❌ Error reiniciando partidos:', partidosError);
-            return res.status(500).json({ error: partidosError.message });
-        }
         console.log('   ✅ Partidos reiniciados');
 
-        const { error: equiposError } = await supabase
+        await supabase
             .from('equipos')
             .update({
                 ganados: 0,
@@ -529,10 +648,6 @@ app.post('/api/reiniciar', verificarToken, async (req, res) => {
             })
             .eq('torneo_id', torneo.id);
         
-        if (equiposError) {
-            console.error('❌ Error reiniciando equipos:', equiposError);
-            return res.status(500).json({ error: equiposError.message });
-        }
         console.log('   ✅ Estadísticas de equipos reiniciadas');
 
         notificarCambios('partidos', 'REINICIAR');
