@@ -43,21 +43,16 @@ function verificarToken(req, res, next) {
     }
 }
 
-// ===== OBTENER TORNEO PRINCIPAL =====
+// ===== OBTENER TORNEO PRINCIPAL (VERSIÓN SIMPLE) =====
 async function getTorneoPrincipal() {
-    const { data: torneo, error } = await supabase
+    let { data: torneo, error } = await supabase
         .from('torneos')
         .select('*')
         .eq('nombre', 'torneo_principal')
-        .maybeSingle();
+        .single();
     
-    if (error) {
-        console.error('❌ Error obteniendo torneo:', error);
-        return null;
-    }
-    
-    if (!torneo) {
-        console.log('⚠️ Torneo no encontrado, creando uno nuevo...');
+    if (error && error.code === 'PGRST116') {
+        console.log('⚠️ No hay torneo, creando uno nuevo...');
         const { data: nuevo, error: insertError } = await supabase
             .from('torneos')
             .insert({ 
@@ -75,6 +70,12 @@ async function getTorneoPrincipal() {
         return nuevo;
     }
     
+    if (error) {
+        console.error('❌ Error obteniendo torneo:', error);
+        return null;
+    }
+    
+    console.log('✅ Torneo encontrado (ID:', torneo.id, ')');
     return torneo;
 }
 
@@ -196,12 +197,10 @@ async function calcularEstadisticas(torneoId) {
 
 // ===== RUTAS DE API =====
 
-// Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'Servidor con Supabase' });
 });
 
-// Login
 app.post('/api/login', (req, res) => {
     const { password } = req.body;
     if (password === ADMIN_PASSWORD) {
@@ -209,105 +208,6 @@ app.post('/api/login', (req, res) => {
         res.json({ success: true, token });
     } else {
         res.status(401).json({ success: false, error: 'Contraseña incorrecta' });
-    }
-});
-
-// ===== ENDPOINT DE DIAGNÓSTICO =====
-app.get('/api/diagnostico', async (req, res) => {
-    console.log('🔍 Diagnóstico iniciado');
-    try {
-        // 1. Verificar conexión a Supabase
-        const { data: test, error: testError } = await supabase
-            .from('torneos')
-            .select('*')
-            .limit(1);
-        
-        if (testError) {
-            console.error('❌ Error de conexión:', testError);
-            return res.status(500).json({
-                error: 'Error conectando a Supabase',
-                details: testError.message,
-                supabase_url: process.env.SUPABASE_URL ? '✅ Configurada' : '❌ FALTA',
-                supabase_key: process.env.SUPABASE_KEY ? '✅ Configurada' : '❌ FALTA'
-            });
-        }
-
-        // 2. Obtener torneo principal
-        const torneo = await getTorneoPrincipal();
-        
-        if (!torneo) {
-            return res.json({
-                conexion: '✅ OK',
-                mensaje: 'No hay torneo "torneo_principal" en la base de datos',
-                torneos_disponibles: test
-            });
-        }
-
-        const torneoId = torneo.id;
-        console.log(`📁 Torneo encontrado: ${torneo.nombre} (ID: ${torneoId})`);
-
-        // 3. Contar registros en cada tabla
-        const { count: equiposCount } = await supabase
-            .from('equipos')
-            .select('*', { count: 'exact', head: true })
-            .eq('torneo_id', torneoId);
-
-        const { count: gruposCount } = await supabase
-            .from('grupos')
-            .select('*', { count: 'exact', head: true })
-            .eq('torneo_id', torneoId);
-
-        const { count: partidosCount } = await supabase
-            .from('partidos')
-            .select('*', { count: 'exact', head: true })
-            .eq('torneo_id', torneoId);
-
-        const { count: juvenilesCount } = await supabase
-            .from('juveniles')
-            .select('*', { count: 'exact', head: true })
-            .eq('torneo_id', torneoId);
-
-        const { count: grupoEquiposCount } = await supabase
-            .from('grupo_equipos')
-            .select('*', { count: 'exact', head: true });
-
-        // 4. Obtener muestra de los datos
-        const { data: equiposMuestra } = await supabase
-            .from('equipos')
-            .select('id, nombre')
-            .eq('torneo_id', torneoId)
-            .limit(3);
-
-        const { data: gruposMuestra } = await supabase
-            .from('grupos')
-            .select('id, nombre')
-            .eq('torneo_id', torneoId)
-            .limit(3);
-
-        res.json({
-            conexion: '✅ OK',
-            torneo: {
-                id: torneoId,
-                nombre: torneo.nombre,
-                configuracion: torneo.configuracion
-            },
-            conteos: {
-                juveniles: juvenilesCount || 0,
-                equipos: equiposCount || 0,
-                grupos: gruposCount || 0,
-                partidos: partidosCount || 0,
-                grupo_equipos: grupoEquiposCount || 0
-            },
-            muestra: {
-                equipos: equiposMuestra || [],
-                grupos: gruposMuestra || []
-            },
-            supabase_url: process.env.SUPABASE_URL ? '✅ Configurada' : '❌ FALTA',
-            supabase_key: process.env.SUPABASE_KEY ? '✅ Configurada' : '❌ FALTA'
-        });
-    } catch (error) {
-        console.error('❌ Error en diagnóstico:', error);
-        res.status(500).json({ error: error.message, stack: error.stack });
     }
 });
 
@@ -324,37 +224,32 @@ app.get('/api/torneo', async (req, res) => {
         console.log(`📁 Torneo ID: ${torneoId}`);
 
         // 1. Obtener juveniles
-        const { data: juveniles, error: jError } = await supabase
+        const { data: juveniles } = await supabase
             .from('juveniles')
             .select('*')
             .eq('torneo_id', torneoId);
-        if (jError) console.error('❌ Error juveniles:', jError);
         console.log(`👥 Juveniles: ${juveniles?.length || 0}`);
 
         // 2. Obtener equipos
-        const { data: equipos, error: eError } = await supabase
+        const { data: equipos } = await supabase
             .from('equipos')
             .select('*')
             .eq('torneo_id', torneoId);
-        if (eError) console.error('❌ Error equipos:', eError);
         console.log(`🏆 Equipos: ${equipos?.length || 0}`);
 
         // 3. Obtener grupos
-        const { data: gruposRaw, error: gError } = await supabase
+        const { data: gruposRaw } = await supabase
             .from('grupos')
             .select('*')
             .eq('torneo_id', torneoId);
-        if (gError) console.error('❌ Error grupos:', gError);
         console.log(`📋 Grupos raw: ${gruposRaw?.length || 0}`);
 
         // 4. Para cada grupo, obtener sus equipos desde grupo_equipos
         const grupos = await Promise.all((gruposRaw || []).map(async (g) => {
-            const { data: grupoEquipos, error: geError } = await supabase
+            const { data: grupoEquipos } = await supabase
                 .from('grupo_equipos')
                 .select('equipo_id')
                 .eq('grupo_id', g.id);
-            
-            if (geError) console.error(`❌ Error grupo_equipos para ${g.nombre}:`, geError);
             
             const equipoIds = (grupoEquipos || []).map(ge => ge.equipo_id);
             const equiposDelGrupo = equipos.filter(e => equipoIds.includes(e.id));
@@ -367,11 +262,10 @@ app.get('/api/torneo', async (req, res) => {
         }));
 
         // 5. Obtener partidos
-        const { data: partidosRaw, error: pError } = await supabase
+        const { data: partidosRaw } = await supabase
             .from('partidos')
             .select('*')
             .eq('torneo_id', torneoId);
-        if (pError) console.error('❌ Error partidos:', pError);
         console.log(`⚽ Partidos raw: ${partidosRaw?.length || 0}`);
 
         // 6. Enriquecer partidos con nombres
@@ -380,12 +274,12 @@ app.get('/api/torneo', async (req, res) => {
                 .from('equipos')
                 .select('nombre')
                 .eq('id', p.equipo1_id)
-                .maybeSingle();
+                .single();
             const { data: e2 } = await supabase
                 .from('equipos')
                 .select('nombre')
                 .eq('id', p.equipo2_id)
-                .maybeSingle();
+                .single();
             return {
                 ...p,
                 equipo1: e1?.nombre || `Equipo ${p.equipo1_id}`,
@@ -393,7 +287,7 @@ app.get('/api/torneo', async (req, res) => {
             };
         }));
 
-        // 7. Ordenar partidos: finalizados primero, pendientes después
+        // 7. Ordenar partidos
         partidos.sort((a, b) => {
             if (a.jugado !== b.jugado) {
                 return a.jugado ? -1 : 1;
@@ -401,7 +295,6 @@ app.get('/api/torneo', async (req, res) => {
             return a.id - b.id;
         });
 
-        // 8. Respuesta final
         const response = {
             nombre: torneo.nombre,
             configuracion: torneo.configuracion || { puntos_ganado: 3, puntos_empate: 1, puntos_perdido: 0 },
@@ -485,7 +378,7 @@ app.post('/api/partidos/:id/resultado', verificarToken, async (req, res) => {
             .from('partidos')
             .select('*')
             .eq('id', id)
-            .maybeSingle();
+            .single();
 
         if (!partido) {
             return res.status(404).json({ error: 'Partido no encontrado' });
@@ -497,14 +390,14 @@ app.post('/api/partidos/:id/resultado', verificarToken, async (req, res) => {
                 .from('equipos')
                 .select('nombre')
                 .eq('id', partido.equipo1_id)
-                .maybeSingle();
+                .single();
             ganador = e1?.nombre || 'Equipo 1';
         } else if (goles2 > goles1) {
             const { data: e2 } = await supabase
                 .from('equipos')
                 .select('nombre')
                 .eq('id', partido.equipo2_id)
-                .maybeSingle();
+                .single();
             ganador = e2?.nombre || 'Equipo 2';
         } else {
             ganador = 'Empate';
@@ -532,18 +425,18 @@ app.post('/api/partidos/:id/resultado', verificarToken, async (req, res) => {
             .from('partidos')
             .select('*')
             .eq('id', id)
-            .maybeSingle();
+            .single();
 
         const { data: e1 } = await supabase
             .from('equipos')
             .select('nombre')
-            .eq('id', partidoActualizado?.equipo1_id)
-            .maybeSingle();
+            .eq('id', partidoActualizado.equipo1_id)
+            .single();
         const { data: e2 } = await supabase
             .from('equipos')
             .select('nombre')
-            .eq('id', partidoActualizado?.equipo2_id)
-            .maybeSingle();
+            .eq('id', partidoActualizado.equipo2_id)
+            .single();
 
         res.json({
             success: true,
@@ -586,7 +479,7 @@ app.delete('/api/partidos/:id/resultado', verificarToken, async (req, res) => {
             .from('partidos')
             .select('*')
             .eq('id', id)
-            .maybeSingle();
+            .single();
 
         if (!partido) {
             return res.status(404).json({ error: 'Partido no encontrado' });
