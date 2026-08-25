@@ -79,120 +79,184 @@ async function getTorneoPrincipal() {
     return torneo;
 }
 
-// ===== CALCULAR ESTADÍSTICAS =====
+// ===== CALCULAR ESTADÍSTICAS (CORREGIDO) =====
 async function calcularEstadisticas(torneoId) {
     console.log('📊 Recalculando estadísticas...');
     
-    const { data: equipos } = await supabase
-        .from('equipos')
-        .select('*')
-        .eq('torneo_id', torneoId);
-
-    for (const equipo of equipos || []) {
-        await supabase
+    try {
+        // 1. Obtener todos los equipos del torneo
+        const { data: equipos, error: equiposError } = await supabase
             .from('equipos')
-            .update({
-                ganados: 0,
-                empatados: 0,
-                perdidos: 0,
-                goles_favor: 0,
-                goles_contra: 0,
-                puntos: 0
-            })
-            .eq('id', equipo.id);
-    }
-
-    const { data: partidosJugados } = await supabase
-        .from('partidos')
-        .select('*')
-        .eq('torneo_id', torneoId)
-        .eq('jugado', true);
-
-    console.log(`   📋 Partidos jugados encontrados: ${partidosJugados?.length || 0}`);
-
-    for (const p of partidosJugados || []) {
-        const equipo1 = equipos?.find(e => e.id === p.equipo1_id);
-        const equipo2 = equipos?.find(e => e.id === p.equipo2_id);
+            .select('*')
+            .eq('torneo_id', torneoId);
         
-        if (!equipo1 || !equipo2) continue;
-
-        const { data: e1Actual } = await supabase
-            .from('equipos')
-            .select('ganados, empatados, perdidos, goles_favor, goles_contra, puntos')
-            .eq('id', equipo1.id)
-            .single();
-        
-        const { data: e2Actual } = await supabase
-            .from('equipos')
-            .select('ganados, empatados, perdidos, goles_favor, goles_contra, puntos')
-            .eq('id', equipo2.id)
-            .single();
-
-        const g1 = p.goles1 || 0;
-        const g2 = p.goles2 || 0;
-
-        await supabase
-            .from('equipos')
-            .update({
-                goles_favor: (e1Actual?.goles_favor || 0) + g1,
-                goles_contra: (e1Actual?.goles_contra || 0) + g2
-            })
-            .eq('id', equipo1.id);
-
-        await supabase
-            .from('equipos')
-            .update({
-                goles_favor: (e2Actual?.goles_favor || 0) + g2,
-                goles_contra: (e2Actual?.goles_contra || 0) + g1
-            })
-            .eq('id', equipo2.id);
-
-        if (g1 > g2) {
-            await supabase
-                .from('equipos')
-                .update({
-                    ganados: (e1Actual?.ganados || 0) + 1,
-                    puntos: (e1Actual?.puntos || 0) + 3
-                })
-                .eq('id', equipo1.id);
-            await supabase
-                .from('equipos')
-                .update({
-                    perdidos: (e2Actual?.perdidos || 0) + 1
-                })
-                .eq('id', equipo2.id);
-        } else if (g2 > g1) {
-            await supabase
-                .from('equipos')
-                .update({
-                    ganados: (e2Actual?.ganados || 0) + 1,
-                    puntos: (e2Actual?.puntos || 0) + 3
-                })
-                .eq('id', equipo2.id);
-            await supabase
-                .from('equipos')
-                .update({
-                    perdidos: (e1Actual?.perdidos || 0) + 1
-                })
-                .eq('id', equipo1.id);
-        } else {
-            await supabase
-                .from('equipos')
-                .update({
-                    empatados: (e1Actual?.empatados || 0) + 1,
-                    puntos: (e1Actual?.puntos || 0) + 1
-                })
-                .eq('id', equipo1.id);
-            await supabase
-                .from('equipos')
-                .update({
-                    empatados: (e2Actual?.empatados || 0) + 1,
-                    puntos: (e2Actual?.puntos || 0) + 1
-                })
-                .eq('id', equipo2.id);
+        if (equiposError) {
+            console.error('❌ Error obteniendo equipos:', equiposError);
+            return;
         }
+        
+        console.log(`   🏆 Equipos encontrados: ${equipos?.length || 0}`);
+
+        // 2. REINICIAR TODAS LAS ESTADÍSTICAS A CERO
+        for (const equipo of equipos || []) {
+            const { error: updateError } = await supabase
+                .from('equipos')
+                .update({
+                    ganados: 0,
+                    empatados: 0,
+                    perdidos: 0,
+                    goles_favor: 0,
+                    goles_contra: 0,
+                    puntos: 0
+                })
+                .eq('id', equipo.id);
+            
+            if (updateError) {
+                console.error(`❌ Error reiniciando equipo ${equipo.nombre}:`, updateError);
+            }
+        }
+        console.log('   ↺ Estadísticas reiniciadas a cero');
+
+        // 3. Obtener partidos jugados (SOLO los que están en true)
+        const { data: partidosJugados, error: partidosError } = await supabase
+            .from('partidos')
+            .select('*')
+            .eq('torneo_id', torneoId)
+            .eq('jugado', true);
+        
+        if (partidosError) {
+            console.error('❌ Error obteniendo partidos jugados:', partidosError);
+            return;
+        }
+        
+        console.log(`   📋 Partidos jugados encontrados: ${partidosJugados?.length || 0}`);
+
+        // 4. Si no hay partidos jugados, terminar
+        if (!partidosJugados || partidosJugados.length === 0) {
+            console.log('   ℹ️ No hay partidos jugados para calcular estadísticas');
+            return;
+        }
+
+        // 5. Calcular estadísticas basadas en partidos jugados
+        for (const p of partidosJugados) {
+            const equipo1 = equipos?.find(e => e.id === p.equipo1_id);
+            const equipo2 = equipos?.find(e => e.id === p.equipo2_id);
+            
+            if (!equipo1 || !equipo2) {
+                console.log(`   ⚠️ Partido ${p.id}: equipo no encontrado (${p.equipo1_id} vs ${p.equipo2_id})`);
+                continue;
+            }
+
+            const g1 = p.goles1 || 0;
+            const g2 = p.goles2 || 0;
+
+            // Obtener estadísticas actuales del equipo 1
+            const { data: e1Actual } = await supabase
+                .from('equipos')
+                .select('ganados, empatados, perdidos, goles_favor, goles_contra, puntos')
+                .eq('id', equipo1.id)
+                .single();
+            
+            // Obtener estadísticas actuales del equipo 2
+            const { data: e2Actual } = await supabase
+                .from('equipos')
+                .select('ganados, empatados, perdidos, goles_favor, goles_contra, puntos')
+                .eq('id', equipo2.id)
+                .single();
+
+            if (!e1Actual || !e2Actual) {
+                console.log(`   ⚠️ No se pudieron obtener estadísticas para ${equipo1.nombre} o ${equipo2.nombre}`);
+                continue;
+            }
+
+            // Actualizar goles
+            await supabase
+                .from('equipos')
+                .update({
+                    goles_favor: (e1Actual.goles_favor || 0) + g1,
+                    goles_contra: (e1Actual.goles_contra || 0) + g2
+                })
+                .eq('id', equipo1.id);
+
+            await supabase
+                .from('equipos')
+                .update({
+                    goles_favor: (e2Actual.goles_favor || 0) + g2,
+                    goles_contra: (e2Actual.goles_contra || 0) + g1
+                })
+                .eq('id', equipo2.id);
+
+            // Actualizar resultados
+            if (g1 > g2) {
+                // Gana equipo 1
+                await supabase
+                    .from('equipos')
+                    .update({
+                        ganados: (e1Actual.ganados || 0) + 1,
+                        puntos: (e1Actual.puntos || 0) + 3
+                    })
+                    .eq('id', equipo1.id);
+                await supabase
+                    .from('equipos')
+                    .update({
+                        perdidos: (e2Actual.perdidos || 0) + 1
+                    })
+                    .eq('id', equipo2.id);
+                console.log(`   ✅ ${equipo1.nombre} gana ${g1}-${g2} a ${equipo2.nombre}`);
+            } else if (g2 > g1) {
+                // Gana equipo 2
+                await supabase
+                    .from('equipos')
+                    .update({
+                        ganados: (e2Actual.ganados || 0) + 1,
+                        puntos: (e2Actual.puntos || 0) + 3
+                    })
+                    .eq('id', equipo2.id);
+                await supabase
+                    .from('equipos')
+                    .update({
+                        perdidos: (e1Actual.perdidos || 0) + 1
+                    })
+                    .eq('id', equipo1.id);
+                console.log(`   ✅ ${equipo2.nombre} gana ${g2}-${g1} a ${equipo1.nombre}`);
+            } else {
+                // Empate
+                await supabase
+                    .from('equipos')
+                    .update({
+                        empatados: (e1Actual.empatados || 0) + 1,
+                        puntos: (e1Actual.puntos || 0) + 1
+                    })
+                    .eq('id', equipo1.id);
+                await supabase
+                    .from('equipos')
+                    .update({
+                        empatados: (e2Actual.empatados || 0) + 1,
+                        puntos: (e2Actual.puntos || 0) + 1
+                    })
+                    .eq('id', equipo2.id);
+                console.log(`   🤝 Empate ${g1}-${g2} entre ${equipo1.nombre} y ${equipo2.nombre}`);
+            }
+        }
+
+        console.log('✅ Estadísticas recalculadas correctamente');
+
+        // 6. Verificar resultados finales
+        const { data: equiposFinal } = await supabase
+            .from('equipos')
+            .select('nombre, ganados, empatados, perdidos, goles_favor, goles_contra, puntos')
+            .eq('torneo_id', torneoId)
+            .order('puntos', { ascending: false });
+
+        console.log('📊 Resumen final de estadísticas:');
+        for (const e of equiposFinal || []) {
+            const pj = (e.ganados || 0) + (e.empatados || 0) + (e.perdidos || 0);
+            console.log(`   ${e.nombre}: ${pj} PJ, ${e.puntos} PTS (${e.ganados}G, ${e.empatados}E, ${e.perdidos}P)`);
+        }
+
+    } catch (error) {
+        console.error('❌ Error en calcularEstadisticas:', error);
     }
-    console.log('✅ Estadísticas recalculadas correctamente');
 }
 
 // ===== RUTAS DE API =====
