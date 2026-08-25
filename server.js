@@ -200,33 +200,42 @@ app.post('/api/login', (req, res) => {
     }
 });
 
+// ===== RUTA PRINCIPAL - CORREGIDA =====
 app.get('/api/torneo', async (req, res) => {
     try {
         const torneo = await getTorneoPrincipal();
         const torneoId = torneo.id;
 
+        // 1. Obtener juveniles
         const { data: juveniles } = await supabase
             .from('juveniles')
             .select('*')
             .eq('torneo_id', torneoId);
 
+        // 2. Obtener equipos
         const { data: equipos } = await supabase
             .from('equipos')
             .select('*')
             .eq('torneo_id', torneoId);
 
+        // 3. Obtener grupos
         const { data: gruposRaw } = await supabase
             .from('grupos')
             .select('*')
             .eq('torneo_id', torneoId);
 
+        // 4. Para cada grupo, obtener sus equipos desde grupo_equipos
         const grupos = await Promise.all((gruposRaw || []).map(async (g) => {
+            // Obtener los equipo_id de la tabla grupo_equipos
             const { data: grupoEquipos } = await supabase
                 .from('grupo_equipos')
                 .select('equipo_id')
                 .eq('grupo_id', g.id);
             
+            // Obtener los IDs de los equipos
             const equipoIds = (grupoEquipos || []).map(ge => ge.equipo_id);
+            
+            // Filtrar los equipos que pertenecen a este grupo
             const equiposDelGrupo = equipos.filter(e => equipoIds.includes(e.id));
             
             return {
@@ -235,6 +244,7 @@ app.get('/api/torneo', async (req, res) => {
             };
         }));
 
+        // 5. Obtener partidos y enriquecer con nombres
         const { data: partidosRaw } = await supabase
             .from('partidos')
             .select('*')
@@ -258,6 +268,7 @@ app.get('/api/torneo', async (req, res) => {
             };
         }));
 
+        // 6. Ordenar partidos: finalizados primero, pendientes después
         partidos.sort((a, b) => {
             if (a.jugado !== b.jugado) {
                 return a.jugado ? -1 : 1;
@@ -265,7 +276,8 @@ app.get('/api/torneo', async (req, res) => {
             return a.id - b.id;
         });
 
-        res.json({
+        // 7. Respuesta final
+        const response = {
             nombre: torneo.nombre,
             configuracion: torneo.configuracion || { puntos_ganado: 3, puntos_empate: 1, puntos_perdido: 0 },
             juveniles: juveniles || [],
@@ -273,10 +285,14 @@ app.get('/api/torneo', async (req, res) => {
             grupos: grupos || [],
             partidos: partidos || [],
             llaves: grupos?.[0]?.llaves || null
-        });
+        };
+
+        console.log(`📤 Enviando datos: ${response.grupos.length} grupos, ${response.partidos.length} partidos`);
+        res.json(response);
+
     } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ error: error.message });
+        console.error('❌ Error en /api/torneo:', error);
+        res.status(500).json({ error: error.message, stack: error.stack });
     }
 });
 
